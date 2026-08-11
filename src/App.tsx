@@ -477,12 +477,36 @@ function SettingsPanel() {
         vertexProject: settings.vertexProject,
         vertexLocation: settings.vertexLocation,
         apiKey: key || undefined,
+        testVision: !isVertex && settings.includeWindowImage,
       });
-      setNotice(
-        result.ok && result.chatCompletionVerified
-          ? `실제 호출 성공 · ${result.selectedModel || settings.model}${result.latencyMs !== undefined ? ` · ${result.latencyMs}ms` : ""} · 저장을 눌러 적용`
-          : result.error || "선택한 모델을 호출하지 못했어요",
-      );
+      if (result.ok && result.reconstructionVerified) {
+        const mode =
+          result.structuredOutputMode === "json-schema"
+            ? "JSON Schema"
+            : result.structuredOutputMode === "json-object"
+              ? "JSON object"
+              : result.structuredOutputMode === "prompt-only"
+                ? "prompt JSON"
+                : undefined;
+        const vision = result.visionRequested
+          ? result.visionVerified
+            ? "VLM 이미지 확인"
+            : "text-only 자동 전환"
+          : undefined;
+        setNotice(
+          [
+            "실제 복원 성공",
+            result.selectedModel || settings.model,
+            mode,
+            vision,
+            result.latencyMs !== undefined ? `${result.latencyMs}ms` : undefined,
+            "저장을 눌러 적용",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        );
+      } else
+        setNotice(result.error || "Here 복원 형식을 확인하지 못했어요");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "연결하지 못했어요");
     } finally {
@@ -551,7 +575,7 @@ function SettingsPanel() {
             </div>
           )}
           <div className="inline-actions">
-            <button className="test-button" disabled={testing} onClick={() => void test()}>{testing ? <LoaderCircle className="spinner" size={13} /> : <Zap size={13} />} {isVertex ? "QA 모델 호출" : "업무 모델 호출 테스트"}</button>
+            <button className="test-button" disabled={testing} onClick={() => void test()}>{testing ? <LoaderCircle className="spinner" size={13} /> : <Zap size={13} />} {isVertex ? "QA 모델 호출" : settings.includeWindowImage ? "업무 VLM 복원 테스트" : "업무 모델 복원 테스트"}</button>
             {!isVertex && settings.apiKeyConfigured && <button className="test-button muted-action" onClick={() => void removeKey()}>token 삭제</button>}
           </div>
         </section>

@@ -332,13 +332,17 @@ function stats(): ActivityStats {
 }
 
 function icon(): Electron.NativeImage {
+  return appIcon(24);
+}
+
+function appIcon(width: number): Electron.NativeImage {
   const iconPath = app.isPackaged
     ? join(process.resourcesPath, "icon.png")
     : join(app.getAppPath(), "build", "icon.png");
   const image = nativeImage.createFromPath(iconPath);
   return image.isEmpty()
     ? nativeImage.createEmpty()
-    : image.resize({ width: 24, height: 24 });
+    : image.resize({ width, height: width, quality: "good" });
 }
 
 function refreshTray(): void {
@@ -440,6 +444,12 @@ function visionFromImage(image?: CheckpointImage): VisionContext | undefined {
     mimeType: image.mimeType,
     dataBase64: image.dataUrl.slice(comma + 1),
   };
+}
+
+function connectionProbeVision(): VisionContext | undefined {
+  const data = appIcon(96).toPNG();
+  if (!data.length) return undefined;
+  return { mimeType: "image/png", dataBase64: data.toString("base64") };
 }
 
 async function captureWindowImage(
@@ -727,9 +737,10 @@ function registerIpc(): void {
       const parsed = saveInputSchema.parse(input);
       const patch = settingsPatchSchema.parse(parsed.settings);
       const previous = await store.getPublic();
-      let next = await store.update(patch);
-      if (parsed.clearApiKey) next = await store.clearApiKey();
-      if (parsed.apiKey?.trim()) next = await store.setApiKey(parsed.apiKey);
+      const next = await store.saveWithApiKey(patch, {
+        apiKey: parsed.apiKey,
+        clearApiKey: parsed.clearApiKey,
+      });
       if (
         next.shortcut !== previous.shortcut ||
         next.checkpointShortcut !== previous.checkpointShortcut
@@ -765,14 +776,21 @@ function registerIpc(): void {
         vertexProject: string;
         vertexLocation: string;
         apiKey?: string;
+        testVision?: boolean;
       },
     ): Promise<ConnectionTestResult> => {
       if (!input) return llm.testConnection();
       const parsed = connectionInputSchema.parse(input);
-      return llm.testConnection({
-        ...parsed,
-        apiKey: parsed.apiKey || (await store.getApiKey()),
-      });
+      return llm.testConnection(
+        {
+          ...parsed,
+          apiKey: parsed.apiKey || (await store.getApiKey()),
+        },
+        {
+          visionRequested: parsed.testVision,
+          vision: parsed.testVision ? connectionProbeVision() : undefined,
+        },
+      );
     },
   );
   ipcMain.handle(DESKTOP_IPC.recall, (_event, trigger?: RecallTrigger) =>
@@ -819,6 +837,7 @@ const connectionInputSchema = z
     vertexProject: z.string().trim().max(300),
     vertexLocation: z.string().trim().max(100),
     apiKey: z.string().max(8_192).optional(),
+    testVision: z.boolean().optional(),
   })
   .strict();
 const recallTriggerSchema = z.enum([

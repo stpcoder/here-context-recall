@@ -104,9 +104,32 @@ export class SettingsStore {
   }
 
   async update(patch: SettingsPatch): Promise<PublicSettings> {
+    return this.saveWithApiKey(patch);
+  }
+
+  /** Explicit renderer-safe name for IPC handlers. API keys use setApiKey separately. */
+  async save(input: SettingsPatch): Promise<PublicSettings> {
+    return this.update(input);
+  }
+
+  /**
+   * Persists connection settings and the encrypted API key in one atomic file
+   * replacement. Encrypting happens before the write, so a DPAPI/keychain
+   * failure cannot leave a new endpoint paired with an old credential.
+   */
+  async saveWithApiKey(
+    patch: SettingsPatch,
+    options: { apiKey?: string; clearApiKey?: boolean } = {},
+  ): Promise<PublicSettings> {
     const validPatch = settingsPatchSchema.parse(patch);
     const current = await this.read();
-    const next = persistedSettingsSchema.parse({
+    let encryptedApiKey = options.clearApiKey
+      ? undefined
+      : current.encryptedApiKey;
+    if (options.apiKey?.trim())
+      encryptedApiKey = this.encryptApiKey(options.apiKey);
+
+    const candidate = {
       ...current,
       ...validPatch,
       endpoint: validPatch.endpoint
@@ -115,37 +138,23 @@ export class SettingsStore {
       excludedApps: validPatch.excludedApps
         ? normalizeExcludedApps(validPatch.excludedApps)
         : current.excludedApps,
-    });
+    };
+    if (encryptedApiKey) candidate.encryptedApiKey = encryptedApiKey;
+    else delete candidate.encryptedApiKey;
+
+    const next = persistedSettingsSchema.parse(candidate);
     await this.write(next);
     return this.toPublic(next);
-  }
-
-  /** Explicit renderer-safe name for IPC handlers. API keys use setApiKey separately. */
-  async save(input: SettingsPatch): Promise<PublicSettings> {
-    return this.update(input);
   }
 
   async setApiKey(apiKey: string): Promise<PublicSettings> {
     const key = apiKey.trim();
     if (!key) throw new Error("API key cannot be empty.");
-    if (key.length > 8_192) throw new Error("API key is too long.");
-    if (!this.safeStorage.isEncryptionAvailable()) {
-      throw new Error("OS encryption is unavailable; API key was not saved.");
-    }
-    const current = await this.read();
-    const next = {
-      ...current,
-      encryptedApiKey: this.safeStorage.encryptString(key).toString("base64"),
-    };
-    await this.write(persistedSettingsSchema.parse(next));
-    return this.toPublic(next);
+    return this.saveWithApiKey({}, { apiKey: key });
   }
 
   async clearApiKey(): Promise<PublicSettings> {
-    const current = await this.read();
-    const { encryptedApiKey: _key, ...withoutKey } = current;
-    await this.write(withoutKey);
-    return this.toPublic(withoutKey);
+    return this.saveWithApiKey({}, { clearApiKey: true });
   }
 
   /** Main-process consumers only; do not wire this method to ipcMain.handle. */
@@ -203,6 +212,16 @@ export class SettingsStore {
       mode: 0o600,
     });
     await rename(temporaryPath, this.filePath);
+  }
+
+  private encryptApiKey(apiKey: string): string {
+    const key = apiKey.trim();
+    if (!key) throw new Error("API key cannot be empty.");
+    if (key.length > 8_192) throw new Error("API key is too long.");
+    if (!this.safeStorage.isEncryptionAvailable()) {
+      throw new Error("OS encryption is unavailable; API key was not saved.");
+    }
+    return this.safeStorage.encryptString(key).toString("base64");
   }
 
   private toPublic(settings: PersistedSettings): PublicSettings {

@@ -65,6 +65,41 @@ describe("SettingsStore", () => {
     expect((await settings.get()).apiKeyConfigured).toBe(false);
   });
 
+  it("does not change the endpoint when encrypting its replacement key fails", async () => {
+    let rejectEncryption = false;
+    const flakySafeStorage: SafeStorage = {
+      ...safeStorage,
+      encryptString: (value) => {
+        if (rejectEncryption) throw new Error("simulated OS encryption failure");
+        return safeStorage.encryptString(value);
+      },
+    };
+    const directory = await mkdtemp(join(tmpdir(), "here-settings-"));
+    const settings = new SettingsStore({
+      filePath: join(directory, "settings.json"),
+      safeStorage: flakySafeStorage,
+    });
+    await settings.saveWithApiKey(
+      { endpoint: "http://127.0.0.1:8000/v1", model: "old-model" },
+      { apiKey: "old-token" },
+    );
+
+    rejectEncryption = true;
+    await expect(
+      settings.saveWithApiKey(
+        { endpoint: "https://llm.internal.example/v1", model: "new-model" },
+        { apiKey: "new-token" },
+      ),
+    ).rejects.toThrow(/encryption failure/);
+
+    await expect(settings.getPublic()).resolves.toMatchObject({
+      endpoint: "http://127.0.0.1:8000/v1",
+      model: "old-model",
+      apiKeyConfigured: true,
+    });
+    await expect(settings.getApiKey()).resolves.toBe("old-token");
+  });
+
   it("backs up corrupt settings and falls back with capture consent off", async () => {
     const directory = await mkdtemp(join(tmpdir(), "here-settings-"));
     const filePath = join(directory, "settings.json");

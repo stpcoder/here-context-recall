@@ -64,7 +64,7 @@ Here를 재시작한 뒤 `Ctrl+Shift+Space`를 누릅니다. 최근 ring buffer�
 
 - Windows-first Electron 앱: 실제 foreground window reader, global shortcut, always-on-top bubble, tray
 - 결정적 causal engine: `A → non-A → A`가 관측된 경우에만 interruption/return 판정
-- Enterprise endpoint: Base URL + Model ID + Bearer token으로 실제 `/chat/completions`를 검증하며, token은 OS 보호 저장소에 암호화
+- Enterprise endpoint: Base URL + Model ID + Bearer token으로 실제 `/chat/completions`와 Here evidence JSON 계약을 검증하며, token은 OS 보호 저장소에 암호화
 - Vertex QA: 로컬 Mac 품질 검증용. `gcloud` ADC/로그인과 현재 project로 `gemini-3.5-flash:generateContent`를 호출하며 별도 API key는 없음
 - Long-gap return: 사용자가 만든 체크포인트만 `safeStorage`로 전체 암호화하고 재시작 뒤 복원
 - 보안 경계: renderer에는 Node 권한·키·직접 네트워크 권한 없음

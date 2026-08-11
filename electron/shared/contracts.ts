@@ -209,9 +209,16 @@ export interface ConnectionTestResult {
   selectedModel?: string;
   /** True only after the selected model answered a real chat-completions call. */
   chatCompletionVerified?: boolean;
+  /** True only after the response passed Here's grounded reconstruction schema. */
+  reconstructionVerified?: boolean;
+  structuredOutputMode?: "json-schema" | "json-object" | "prompt-only";
+  visionRequested?: boolean;
+  visionVerified?: boolean;
   /** `/models` is useful discovery, but is not required by every internal gateway. */
   modelsEndpointAvailable?: boolean;
   latencyMs?: number;
+  requestId?: string;
+  warning?: string;
   error?: string;
 }
 
@@ -264,6 +271,7 @@ export interface HereDesktopApi {
     vertexProject: string;
     vertexLocation: string;
     apiKey?: string;
+    testVision?: boolean;
   }): Promise<ConnectionTestResult>;
   recall(trigger?: RecallTrigger): Promise<RecallState>;
   getRecall(): Promise<RecallState>;

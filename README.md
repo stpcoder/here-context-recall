@@ -54,14 +54,16 @@ Windows 설치본은 설치 마지막 단계에서 **Here 실행**이 기본 선
 
 ## OpenAI-compatible / vLLM
 
+전체 운영 계약과 사내 서버 점검 항목은 [VLLM.md](VLLM.md)에 정리했습니다.
+
 설정 화면의 **Work AI**에서 Base URL, Model ID, Bearer token을 넣습니다. 로컬 무인증 vLLM은 token을 생략할 수 있습니다.
 
 - Base URL 예: `http://127.0.0.1:8000/v1`, 사내 HTTPS gateway
-- 연결 확인: 선택한 Model ID로 `POST {baseUrl}/chat/completions`를 실제 호출
+- 연결 확인: 선택한 Model ID로 `POST {baseUrl}/chat/completions`를 호출해 Here의 evidence JSON 복원 계약까지 검증
 - 모델 목록: `GET {baseUrl}/models`를 지원할 때만 보조적으로 확인
 - 복원 요청: `POST {baseUrl}/chat/completions`
 
-`response_format`을 지원하지 않는 호환 서버에는 일반 JSON 요청으로 재시도합니다. 창 이미지 옵션이 켜져 있어도 text-only 모델이 이미지 입력을 거부하면 관측된 텍스트 근거만으로 자동 전환합니다. Base URL이 비어 있거나 모델 호출에 실패해도 결정적 로컬 체인은 남습니다. Bearer token은 OS 보호 저장소에 암호화하고 renderer에는 전달하지 않습니다. 사내 데이터 정책에 따라 제목 metadata를 모델로 보내도 되는지 먼저 확인하세요.
+JSON Schema를 지원하지 않는 호환 서버에는 `json_object`, prompt-only JSON 순서로 재시도합니다. 창 이미지 옵션이 켜져 있어도 text-only 모델이 이미지 입력을 거부하면 관측된 텍스트 근거만으로 자동 전환합니다. Base URL이 비어 있거나 모델 호출에 실패해도 결정적 로컬 체인은 남습니다. Bearer token은 OS 보호 저장소에 암호화하고 renderer에는 전달하지 않습니다. 사내 데이터 정책에 따라 제목 metadata를 모델로 보내도 되는지 먼저 확인하세요.
 
 ## Vertex AI / Gemini VLM
 
