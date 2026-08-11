@@ -67,16 +67,3 @@ export function buildContextJourney(state: RecallState): JourneyMoment[] {
     };
   });
 }
-
-export function interruptionSummary(state: RecallState): string | undefined {
-  const journey = buildContextJourney(state);
-  const opened = journey.find((moment) => moment.phase === "opened");
-  const returned = journey.find((moment) => moment.phase === "now");
-  if (!opened || !returned || !journey.some((moment) => moment.phase === "away"))
-    return undefined;
-  const minutes = Math.max(
-    1,
-    Math.round((returned.timestamp - opened.timestamp) / 60_000),
-  );
-  return `다른 창으로 이동 · ${minutes}분 뒤 복귀`;
-}

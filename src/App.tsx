@@ -3,7 +3,6 @@ import {
   AppWindow,
   ArrowRight,
   Bookmark,
-  Camera,
   Check,
   ChevronRight,
   Clock3,
@@ -15,8 +14,6 @@ import {
   LoaderCircle,
   Mail,
   MessageSquare,
-  Pause,
-  Play,
   Server,
   Settings2,
   Trash2,
@@ -35,7 +32,6 @@ import type {
 } from "../electron/shared/contracts";
 import {
   buildContextJourney,
-  interruptionSummary,
   type JourneyMoment,
 } from "./context-journey";
 import { createShowcaseApi } from "./showcase-api";
@@ -47,8 +43,8 @@ const showcase = import.meta.env.DEV && query.get("showcase") === "1";
 if (showcase && query.get("captureScale")) {
   const scale = Math.max(1, Math.min(3, Number(query.get("captureScale")) || 1));
   const isBubbleCapture = query.get("surface") === "bubble";
-  const width = Math.max(isBubbleCapture ? 1 : 320, Number(query.get("captureWidth")) || 900);
-  const height = Math.max(isBubbleCapture ? 1 : 320, Number(query.get("captureHeight")) || 620);
+  const width = Math.max(isBubbleCapture ? 1 : 320, Number(query.get("captureWidth")) || 860);
+  const height = Math.max(isBubbleCapture ? 1 : 320, Number(query.get("captureHeight")) || 540);
   document.documentElement.dataset.showcaseCapture = "true";
   document.documentElement.style.setProperty("--showcase-scale", String(scale));
   document.documentElement.style.setProperty("--showcase-width", `${width}px`);
@@ -88,6 +84,10 @@ function moment(value?: number): string {
 
 function appLabel(event?: ActivityEvent): string {
   return event?.appName || "알 수 없는 앱";
+}
+
+function shortAppLabel(event?: ActivityEvent): string {
+  return appLabel(event).replace(/^Microsoft\s+/i, "");
 }
 
 function titleLabel(event?: ActivityEvent): string {
@@ -148,7 +148,7 @@ function Bubble() {
     checkpoint?.status === "saving"
       ? "기억하는 중"
       : flash
-        ? "여기 기억했어요"
+        ? "나중에 이어둘게요"
         : "Why am I here?";
 
   return (
@@ -191,50 +191,59 @@ function JourneyRow({ item, index }: { item: JourneyMoment; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.045, duration: 0.18 }}
     >
-      <div className="journey-rail"><span><WindowIcon app={item.app} /></span></div>
-      <div className="journey-content">
-        <div className="journey-meta">
-          <span>{item.phaseLabel}</span>
-          <time>{clock(item.timestamp)}</time>
-        </div>
-        <div className="journey-window">
-          <strong>{item.app}</strong>
-          <p title={item.detail}>{item.detail}</p>
-        </div>
-      </div>
+      <time>{clock(item.timestamp)}</time>
+      <span className="journey-icon"><WindowIcon app={item.app} /></span>
+      <strong>{item.app}</strong>
+      <p title={item.detail}>{item.detail}</p>
     </motion.li>
   );
 }
 
-function JourneyTimeline({ state }: { state: RecallState }) {
-  const journey = buildContextJourney(state);
-  const first = journey[0];
-  const last = journey.at(-1);
+function JourneyGroup({ label, items }: { label: string; items: JourneyMoment[] }) {
+  if (!items.length) return null;
   return (
-    <section className="journey-card" aria-label="현재 창에 오기까지의 시간순 흐름">
-      <header className="journey-header">
-        <div><span>이 창까지의 흐름</span><small>위에서 아래로 읽으세요</small></div>
-        {first && last && <time>{clock(first.timestamp)}—{clock(last.timestamp)}</time>}
-      </header>
-      <ol className="journey-list">
-        {journey.map((item, index) => <JourneyRow key={item.eventId} item={item} index={index} />)}
+    <section className="journey-group">
+      <h2>{label}</h2>
+      <ol>
+        {items.map((item, index) => <JourneyRow key={item.eventId} item={item} index={index} />)}
       </ol>
     </section>
   );
 }
 
-function ContinueCard({ state, onResume }: { state: RecallState; onResume: () => void }) {
+function JourneyTimeline({ state }: { state: RecallState }) {
+  const journey = buildContextJourney(state);
+  const before = journey.filter((item) => item.phase === "before" || item.phase === "opened");
+  const away = journey.filter((item) => item.phase === "away");
+  const current = journey.filter((item) => item.phase === "now");
+  return (
+    <section className="journey-card" aria-label="현재 작업에 도착하기까지의 흐름">
+      <JourneyGroup label="열기까지" items={before} />
+      <JourneyGroup label="자리를 비운 동안" items={away} />
+      <JourneyGroup label={state.mode === "checkpoint" ? "저장한 위치" : "현재"} items={current} />
+    </section>
+  );
+}
+
+function ContinueCard({
+  state,
+  onResume,
+  onRemember,
+  remembering,
+}: {
+  state: RecallState;
+  onResume: () => void;
+  onRemember: () => void;
+  remembering: boolean;
+}) {
   const currentTitle = titleLabel(state.current) || "현재 창";
-  const target = state.reconstruction?.target?.trim();
-  const showTarget = Boolean(target && target.toLocaleLowerCase() !== currentTitle.toLocaleLowerCase());
   const nextAction = state.reconstruction?.nextAction || state.explanation?.nextAction || "현재 창에서 계속 확인하기";
   const image = state.contextImage;
+  const returnLabel = state.mode === "checkpoint"
+    ? "Here 닫기"
+    : `${shortAppLabel(state.current)}로 돌아가기`;
   return (
     <section className="continue-card" aria-label="현재 창과 이어서 할 일">
-      <header className="continue-header">
-        <span>지금 화면</span>
-        <small>{image ? <><Camera size={12} />복원 순간 1장</> : "화면 미리보기 꺼짐"}</small>
-      </header>
       <div className={`window-preview ${image ? "has-image" : ""}`}>
         {image ? (
           <img src={image.dataUrl} alt="사용자가 복원 순간에 허용한 현재 창 미리보기" />
@@ -246,13 +255,19 @@ function ContinueCard({ state, onResume }: { state: RecallState; onResume: () =>
           <strong title={currentTitle}>{currentTitle}</strong>
         </div>
       </div>
-      <div className="continue-details">
-        {showTarget && <div><span>찾으려던 지점</span><strong>{target}</strong></div>}
-        <div><span>이어서 할 일</span><strong>{nextAction}</strong></div>
+      <div className="next-action-card">
+        <span>다음</span>
+        <strong>{nextAction}</strong>
       </div>
       <button className="primary-action continue-action" onClick={onResume}>
-        Here 닫고 이 창 계속 <ArrowRight size={17} />
+        {returnLabel} <ArrowRight size={17} />
       </button>
+      {state.mode !== "checkpoint" && (
+        <button className="remember-later-action" onClick={onRemember} disabled={remembering}>
+          {remembering ? <LoaderCircle className="spinner" size={15} /> : <Bookmark size={15} />}
+          {remembering ? "저장 중" : "나중에 이어보기"}
+        </button>
+      )}
     </section>
   );
 }
@@ -261,11 +276,11 @@ function EmptyState({ onRemember, onSettings }: { onRemember: () => void; onSett
   return (
     <div className="empty-state">
       <div className="empty-orbit"><Mark /></div>
-      <h1>여기부터 기억할까요?</h1>
-      <p className="muted">다음에 바로 돌아올 수 있어요.</p>
+      <h1>이 작업을 나중에 이어볼까요?</h1>
+      <p className="muted">현재 작업 위치만 안전하게 저장합니다.</p>
       <div className="empty-actions">
         <button className="primary-action" onClick={onRemember}>
-          <Bookmark size={16} /> 여기 기억하기
+          <Bookmark size={16} /> 나중에 이어보기
         </button>
         <button className="text-action" onClick={onSettings}>
           설정 <ChevronRight size={14} />
@@ -277,14 +292,10 @@ function EmptyState({ onRemember, onSettings }: { onRemember: () => void; onSett
 
 function RecallPanel() {
   const [state, setState] = useState<RecallState>();
-  const [stats, setStats] = useState<DesktopBootstrap["stats"]>();
-  const [settings, setSettings] = useState<PublicSettings>();
   const [checkpoint, setCheckpoint] = useState<CheckpointState>();
   const refresh = useCallback(async () => {
     const boot = await api.bootstrap();
     setState(boot.recall);
-    setStats(boot.stats);
-    setSettings(boot.settings);
     setCheckpoint(boot.checkpoint);
   }, []);
 
@@ -299,34 +310,18 @@ function RecallPanel() {
   }, [refresh]);
 
   const dismiss = () => void api.dismissRecall();
-  const pause = async () => {
-    const next = stats?.paused
-      ? await api.resumeCapture()
-      : await api.pauseCapture();
-    setStats(next);
-  };
   const remember = async () => setCheckpoint(await api.remember());
   const heading = state?.reconstruction?.summary || state?.explanation?.answer;
   const hasContext = Boolean(
     state?.current || state?.explanation?.chain.length || state?.checkpoint,
   );
-  const modelLabel =
-    state?.reconstruction?.source === "model"
-      ? settings?.modelProvider === "vertex-gcloud" ? "QA 복원" : "AI 복원"
-      : "로컬 복원";
-  const saved = state?.checkpoint ?? checkpoint?.latest;
-  const evidenceCount = state?.explanation?.evidenceIds.length ?? 0;
   const currentTitle = titleLabel(state?.current) || "현재 창";
-  const returnDetail = state ? interruptionSummary(state) : undefined;
 
   return (
     <main className="recall-shell">
       <header className="panel-topbar">
         <div className="wordmark"><Mark compact /><span>here</span></div>
         <div className="topbar-actions">
-          <span className={`mode-chip mode-${state?.mode ?? "recent"}`}>
-            {state?.mode === "checkpoint" ? "저장한 지점" : "최근 10분"}
-          </span>
           <button className="icon-button" onClick={() => void api.openSettings()} aria-label="설정 열기">
             <Settings2 size={17} />
           </button>
@@ -347,40 +342,26 @@ function RecallPanel() {
         ) : (
           <motion.section key={`${state?.mode}-${state?.updatedAt}`} className="recall-layout" initial={showcase ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             <header className="recall-intro">
-              <div className="result-label">
-                <i /> {state?.mode === "checkpoint" ? "저장한 작업" : state?.explanation?.interrupted ? "이 창으로 돌아옴" : "현재 창"}
-                <span>·</span>
-                {state?.mode === "checkpoint" ? moment(state.checkpoint?.createdAt) : "방금"}
-                {returnDetail && <><span>·</span>{returnDetail}</>}
+              <div className="current-window-line">
+                <WindowIcon app={appLabel(state?.current)} />
+                <span>{shortAppLabel(state?.current)}</span>
+                <strong title={currentTitle}>{currentTitle}</strong>
+                {state?.mode === "checkpoint" && <time>{moment(state.checkpoint?.createdAt)} 저장</time>}
               </div>
-              <h1 title={currentTitle}>{currentTitle}</h1>
-              <div className="recall-reason"><span>이 창을 연 이유</span><p>{heading || "이 창을 열기 전 흐름을 확인하세요."}</p></div>
+              <h1>{heading || "이 창에서 하던 일을 찾았어요."}</h1>
             </header>
             <div className="recall-body">
               <JourneyTimeline state={state!} />
               <aside className="recall-aside">
-                <ContinueCard state={state!} onResume={dismiss} />
-              {saved && state?.mode !== "checkpoint" && (
-                <button className="saved-context" onClick={() => void api.recall("saved")}>
-                  <Bookmark size={14} />
-                  <span><small>이전 저장 지점 · {moment(saved.createdAt)}</small><strong>{titleLabel(saved.event)}</strong></span>
-                  <ChevronRight size={15} />
-                </button>
-              )}
+                <ContinueCard
+                  state={state!}
+                  onResume={dismiss}
+                  onRemember={() => void remember()}
+                  remembering={checkpoint?.status === "saving"}
+                />
               </aside>
             </div>
             {state?.message && <p className="error-note">{state.message}</p>}
-            <footer className="recall-footer">
-              <div className="grounding-note"><i /><b>{modelLabel}</b><span>관측한 창 {evidenceCount || 1}개로 구성</span></div>
-              <button className="memory-action" onClick={() => void remember()} disabled={checkpoint?.status === "saving"}>
-                {checkpoint?.status === "saving" ? <LoaderCircle className="spinner" size={15} /> : <Bookmark size={15} />}
-                {checkpoint?.status === "saving" ? "기억하는 중" : "이 지점 기억"}
-                <kbd>{navigator.platform.includes("Mac") ? "⌘⇧M" : "Ctrl⇧M"}</kbd>
-              </button>
-              <button className="pause-action" onClick={() => void pause()} aria-label={stats?.paused ? "기록 다시 시작" : "기록 일시 정지"}>
-                {stats?.paused ? <Play size={15} /> : <Pause size={15} />}
-              </button>
-            </footer>
             {checkpoint?.message && <div className={`checkpoint-note is-${checkpoint.status}`}>{checkpoint.message}</div>}
           </motion.section>
         )}
@@ -600,7 +581,7 @@ function SettingsPanel() {
           <div className="section-title"><span>단축키</span><small>전역</small></div>
           <div className="settings-card shortcut-list">
             <div className="shortcut-card"><span><Clock3 size={15} /><b>복원</b></span><kbd>{desktop?.platform === "darwin" ? "⌘ ⇧ Space" : "Ctrl ⇧ Space"}</kbd>{desktop && !desktop.shortcutRegistered && <em>충돌</em>}</div>
-            <div className="shortcut-card"><span><Bookmark size={15} /><b>기억</b></span><kbd>{desktop?.platform === "darwin" ? "⌘ ⇧ M" : "Ctrl ⇧ M"}</kbd>{desktop && !desktop.checkpointShortcutRegistered && <em>충돌</em>}</div>
+            <div className="shortcut-card"><span><Bookmark size={15} /><b>나중에 이어보기</b></span><kbd>{desktop?.platform === "darwin" ? "⌘ ⇧ M" : "Ctrl ⇧ M"}</kbd>{desktop && !desktop.checkpointShortcutRegistered && <em>충돌</em>}</div>
           </div>
         </section>
 

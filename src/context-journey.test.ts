@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ActivityEvent, RecallState } from "../electron/shared/contracts";
-import { buildContextJourney, interruptionSummary } from "./context-journey";
+import { buildContextJourney } from "./context-journey";
 
 const at = (minute: number) => minute * 60_000;
 const event = (id: string, minute: number, appName: string, title: string): ActivityEvent => ({
@@ -49,7 +49,6 @@ it("labels the observed chronology as before, opened, away, and now", () => {
     "다른 창",
     "지금 복귀",
   ]);
-  expect(interruptionSummary(state)).toBe("다른 창으로 이동 · 3분 뒤 복귀");
 });
 
 describe("journey fallback", () => {

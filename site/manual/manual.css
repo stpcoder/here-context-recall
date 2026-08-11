@@ -207,7 +207,7 @@
   margin: 34px 0 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 9px;
   list-style: none;
 }
@@ -276,7 +276,7 @@
   .shortcut-card { margin-top: 33px; grid-template-columns: 1fr; }
   .shortcut-card > div { min-height: 72px; padding: 0 15px; }
   .shortcut-card > div + div { border-top: 1px solid #3a3a3e; border-left: 0; }
-  .result-grid { grid-template-columns: 1fr 1fr; }
+  .result-grid { grid-template-columns: 1fr; }
   .next-grid { padding-top: 84px; }
   .next-card { padding: 26px; }
   .privacy-strip { padding: 80px 0; }
