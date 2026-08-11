@@ -64,10 +64,132 @@ describe("ActivityMonitor", () => {
     );
 
     await monitor.start();
-    expect(monitor.recent()).toHaveLength(0);
+    expect(monitor.recent()).toMatchObject([
+      { kind: "capture-gap", gapReason: "protected" },
+    ]);
+    expect(monitor.recent()[0]).not.toHaveProperty("appName");
+    expect(monitor.recent()[0]).not.toHaveProperty("title");
     active = sample(2, "Google Chrome", "Incognito");
     await vi.advanceTimersByTimeAsync(25);
-    expect(monitor.recent()).toHaveLength(0);
+    expect(monitor.recent()).toHaveLength(1);
+    expect(monitor.recent()[0].sampleCount).toBe(2);
+    monitor.stop();
+  });
+
+  it("records a stable page title change even when the Windows HWND is reused", async () => {
+    vi.useFakeTimers();
+    let active = sample(7, "Google Chrome", "Budget search");
+    const reader = { activeWindow: vi.fn(async () => active) };
+    const monitor = new ActivityMonitor(
+      { platform: "win32", pollIntervalMs: 25, hereProcessId: 999 },
+      reader,
+    );
+    await monitor.start();
+    active = sample(7, "Google Chrome", "Q3 budget — SharePoint");
+    await vi.advanceTimersByTimeAsync(25);
+    expect(monitor.recent().map((event) => event.title)).toEqual([
+      "Budget search",
+      "Q3 budget — SharePoint",
+    ]);
+    monitor.stop();
+  });
+
+  it("records a privacy-safe gap and a real return to the same window", async () => {
+    vi.useFakeTimers();
+    let active = sample(3, "Microsoft Excel", "Q3.xlsx");
+    const reader = { activeWindow: vi.fn(async () => active) };
+    const monitor = new ActivityMonitor(
+      { platform: "win32", pollIntervalMs: 25, hereProcessId: 999 },
+      reader,
+    );
+    await monitor.start();
+    active = sample(4, "1Password", "Vault");
+    await vi.advanceTimersByTimeAsync(25);
+    active = sample(3, "Microsoft Excel", "Q3.xlsx");
+    await vi.advanceTimersByTimeAsync(25);
+    expect(monitor.recent().map((event) => event.kind)).toEqual([
+      "window-focus",
+      "capture-gap",
+      "window-focus",
+    ]);
+    expect(monitor.current()?.title).toBe("Q3.xlsx");
+    monitor.stop();
+  });
+
+  it("keeps a continuously observed current window while pruning old context", async () => {
+    vi.useFakeTimers();
+    const reader = {
+      activeWindow: vi.fn(async () => sample(1, "Notepad", "Long task")),
+    };
+    const monitor = new ActivityMonitor(
+      {
+        platform: "win32",
+        pollIntervalMs: 25,
+        retentionMs: 100,
+        hereProcessId: 999,
+      },
+      reader,
+    );
+    await monitor.start();
+    await vi.advanceTimersByTimeAsync(250);
+    expect(monitor.current()?.title).toBe("Long task");
+    expect(monitor.current()?.sampleCount).toBeGreaterThan(5);
+    expect(monitor.stats().lastCapturedAt).toBe(Date.now());
+    monitor.stop();
+  });
+
+  it("surfaces repeated reader failure as a generic gap and degraded health", async () => {
+    vi.useFakeTimers();
+    const reader = { activeWindow: vi.fn(async () => undefined) };
+    const monitor = new ActivityMonitor(
+      { platform: "win32", pollIntervalMs: 25, hereProcessId: 999 },
+      reader,
+    );
+    await monitor.start();
+    await vi.advanceTimersByTimeAsync(50);
+    expect(monitor.stats()).toMatchObject({
+      health: "degraded",
+      samplesAttempted: 3,
+      samplesObserved: 0,
+      readFailures: 3,
+      consecutiveReadFailures: 3,
+      current: undefined,
+    });
+    expect(monitor.recent()).toMatchObject([
+      { kind: "capture-gap", gapReason: "unavailable" },
+    ]);
+    monitor.stop();
+  });
+
+  it("recovers after a reader gap and keeps the ring buffer strictly bounded", async () => {
+    vi.useFakeTimers();
+    let active: WindowSample | undefined;
+    const reader = { activeWindow: vi.fn(async () => active) };
+    const monitor = new ActivityMonitor(
+      {
+        platform: "win32",
+        pollIntervalMs: 25,
+        maxEvents: 20,
+        hereProcessId: 999,
+      },
+      reader,
+    );
+    await monitor.start();
+    await vi.advanceTimersByTimeAsync(50);
+    active = sample(10, "Notepad", "Recovered");
+    await vi.advanceTimersByTimeAsync(25);
+    expect(monitor.stats()).toMatchObject({
+      health: "healthy",
+      consecutiveReadFailures: 0,
+      current: { title: "Recovered" },
+    });
+
+    for (let index = 0; index < 25; index += 1) {
+      active = sample(10, "Notepad", `Page ${index}`);
+      await vi.advanceTimersByTimeAsync(25);
+    }
+    expect(monitor.recent()).toHaveLength(20);
+    expect(monitor.recent().at(-1)?.title).toBe("Page 24");
     monitor.stop();
   });
 

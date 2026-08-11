@@ -36,6 +36,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Smoke-test Windows native foreground reader
+        run: npm run test:windows-reader
+
       - name: Package Windows installers
         shell: bash
         env:

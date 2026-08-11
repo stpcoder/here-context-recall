@@ -25,6 +25,7 @@ import {
   type WindowReader,
 } from "./activity-monitor";
 import { explainCausalChain } from "./causal-engine";
+import { calculateCaptureCrop } from "./capture-geometry";
 import { CheckpointStore } from "./checkpoint-store";
 import {
   LlmService,
@@ -325,8 +326,16 @@ function stats(): ActivityStats {
     monitor?.stats() ?? {
       running: false,
       paused: false,
+      health: "stopped",
+      captureMode: "polling",
+      pollIntervalMs: 500,
+      maxEvents: 1_500,
       eventCount: 0,
       retentionMs: 0,
+      samplesAttempted: 0,
+      samplesObserved: 0,
+      readFailures: 0,
+      consecutiveReadFailures: 0,
     }
   );
 }
@@ -456,10 +465,13 @@ async function captureWindowImage(
   event: ActivityEvent | undefined,
   settings: PublicSettings,
 ): Promise<CheckpointImage | undefined> {
-  if (!settings.captureConsent || !settings.includeWindowImage) return undefined;
-  const display = event?.bounds
-    ? screen.getDisplayMatching(event.bounds)
-    : screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  if (
+    !settings.captureConsent ||
+    !settings.includeWindowImage ||
+    !event?.bounds
+  )
+    return undefined;
+  const display = screen.getDisplayMatching(event.bounds);
   const displayBounds = display.bounds;
   const requestedWidth = Math.max(640, Math.min(1_920, displayBounds.width));
   const scale = requestedWidth / displayBounds.width;
@@ -482,6 +494,8 @@ async function captureWindowImage(
   if (restoreSettings) settingsWindow?.hide();
   try {
     await new Promise((resolve) => setTimeout(resolve, 120));
+    const fresh = await monitor?.snapshot();
+    if (!fresh || fresh.id !== event.id) return undefined;
     const sources = await desktopCapturer.getSources({
       types: ["screen"],
       fetchWindowIcons: false,
@@ -491,42 +505,23 @@ async function captureWindowImage(
       sources.find((item) => item.display_id === String(display.id)) ?? sources[0];
     if (!source || source.thumbnail.isEmpty()) return undefined;
     const fullSize = source.thumbnail.getSize();
-    const bounds = event?.bounds ?? displayBounds;
-    const x = Math.max(
-      0,
-      Math.min(
-        fullSize.width - 1,
-        Math.round((bounds.x - displayBounds.x) * scale),
-      ),
-    );
-    const y = Math.max(
-      0,
-      Math.min(
-        fullSize.height - 1,
-        Math.round((bounds.y - displayBounds.y) * scale),
-      ),
-    );
-    const width = Math.max(
-      1,
-      Math.min(fullSize.width - x, Math.round(bounds.width * scale)),
-    );
-    const height = Math.max(
-      1,
-      Math.min(fullSize.height - y, Math.round(bounds.height * scale)),
-    );
-    let image = source.thumbnail.crop({ x, y, width, height });
+    const crop = calculateCaptureCrop(displayBounds, fullSize, event.bounds);
+    if (!crop) return undefined;
+    let image = source.thumbnail.crop(crop);
     if (image.isEmpty()) return undefined;
     const croppedSize = image.getSize();
     if (croppedSize.width > 1_280)
       image = image.resize({ width: 1_280, quality: "good" });
     const size = image.getSize();
     const data = image.toJPEG(72);
-    if (!data.length || data.length > 5_000_000) return undefined;
+    if (!data.length || data.length > 1_500_000) return undefined;
     return {
       mimeType: "image/jpeg",
       dataUrl: `data:image/jpeg;base64,${data.toString("base64")}`,
       width: size.width,
       height: size.height,
+      capturedAt: Date.now(),
+      sourceEventId: event.id,
     };
   } catch {
     return undefined;
@@ -550,7 +545,7 @@ async function remember(): Promise<CheckpointState> {
     const settings = await store.getPublic();
     if (!settings.captureConsent)
       throw new Error("먼저 창 흐름 기록을 허용해 주세요.");
-    const current = monitor?.current();
+    const current = await monitor?.snapshot();
     if (!current) throw new Error("아직 기억할 활성 창이 없습니다.");
     const recent = monitor?.recent() ?? [];
     const explanation = explainCausalChain({ current, events: recent });
@@ -582,13 +577,13 @@ async function remember(): Promise<CheckpointState> {
       }).show();
     }
     const modelEvidence = evidenceFromEvents(evidence);
-    void llm
-      .reconstruct(
-        modelEvidence,
-        { id: current.id, app: current.appName, title: current.title },
-        () => fallback,
-        visionFromImage(image),
-      )
+    if (explanation.confidence !== "low" && modelEvidence.length >= 2)
+      void llm.reconstruct(
+          modelEvidence,
+          { id: current.id, app: current.appName, title: current.title },
+          () => fallback,
+          visionFromImage(image),
+        )
       .then(async (reconstruction) => {
         const updated = await checkpointStore.setReconstruction(
           checkpoint.id,
@@ -617,7 +612,7 @@ async function remember(): Promise<CheckpointState> {
 
 async function recall(trigger: RecallTrigger = "panel"): Promise<RecallState> {
   const settings = await store.getPublic();
-  const recentCurrent = monitor?.current();
+  const recentCurrent = await monitor?.snapshot();
   const recentEvents = monitor?.recent() ?? [];
   const checkpoint = checkpointStore.latest();
   const focusCount = recentEvents.filter(
@@ -665,19 +660,26 @@ async function recall(trigger: RecallTrigger = "panel"): Promise<RecallState> {
   const evidence = evidenceFromEvents(
     events.filter((event) => evidenceIds.has(event.id)),
   );
-  void llm
-    .reconstruct(
-      evidence,
-      current
-        ? {
-            id: current.id,
-            app: current.appName,
-            title: current.title,
-          }
-        : undefined,
-      () => fallback,
-      visionFromImage(image),
-    )
+  const checkpointAlreadyEnriched = Boolean(
+    useCheckpoint && checkpoint?.reconstruction?.source === "model",
+  );
+  if (
+    !checkpointAlreadyEnriched &&
+    explanation.confidence !== "low" &&
+    evidence.length >= 2
+  )
+    void llm.reconstruct(
+        evidence,
+        current
+          ? {
+              id: current.id,
+              app: current.appName,
+              title: current.title,
+            }
+          : undefined,
+        () => fallback,
+        visionFromImage(image),
+      )
     .then((reconstruction) => {
       if (nonce !== recallNonce) return;
       recallState = {

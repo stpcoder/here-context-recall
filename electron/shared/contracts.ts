@@ -6,8 +6,11 @@
  */
 export type ActivityEventKind =
   | "window-focus"
+  | "capture-gap"
   | "monitor-paused"
   | "monitor-resumed";
+
+export type CaptureGapReason = "protected" | "unavailable";
 
 export interface WindowBounds {
   x: number;
@@ -26,13 +29,21 @@ export interface ActivityEvent {
   windowId?: string;
   bounds?: WindowBounds;
   platform: NodeJS.Platform;
+  /** Last successful sample that still observed this exact window. */
+  lastSeenAt?: number;
+  /** Number of consecutive samples coalesced into this event. */
+  sampleCount?: number;
   /** True when a configured privacy rule hid the original title. */
   titleRedacted?: boolean;
+  /** Generic only: never reveals which protected application caused the gap. */
+  gapReason?: CaptureGapReason;
 }
 
 export interface ActivityMonitorOptions {
   pollIntervalMs?: number;
   retentionMs?: number;
+  maxEvents?: number;
+  readTimeoutMs?: number;
   /** App names or executable paths that must never be recorded. */
   excludedApps?: string[];
   /** App names or executable paths whose focus is useful but title is not. */
@@ -46,10 +57,21 @@ export interface ActivityMonitorOptions {
 export interface ActivityStats {
   running: boolean;
   paused: boolean;
+  health: "stopped" | "paused" | "healthy" | "degraded";
+  captureMode: "polling";
+  pollIntervalMs: number;
+  maxEvents: number;
   eventCount: number;
   retentionMs: number;
+  samplesAttempted: number;
+  samplesObserved: number;
+  readFailures: number;
+  consecutiveReadFailures: number;
   current?: ActivityEvent;
   lastCapturedAt?: number;
+  lastPollAt?: number;
+  lastSuccessAt?: number;
+  lastErrorAt?: number;
 }
 
 export interface ActivitySnapshot {
@@ -72,6 +94,11 @@ export interface CausalExplanation {
   chain: CausalStep[];
   evidenceIds: string[];
   interrupted: boolean;
+  confidence: "low" | "medium" | "high";
+  boundary: {
+    reason: "explicit-resume" | "inactivity" | "return-chain" | "recent-window";
+    at?: number;
+  };
 }
 
 export interface CausalQuery {
@@ -162,6 +189,8 @@ export interface CheckpointImage {
   dataUrl: string;
   width: number;
   height: number;
+  capturedAt?: number;
+  sourceEventId?: string;
 }
 
 export interface ContextCheckpoint {
