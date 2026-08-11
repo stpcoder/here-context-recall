@@ -4,7 +4,7 @@ import type { HereDesktopApi } from "../electron/shared/contracts";
 
 declare global {
   interface Window {
-    here: HereDesktopApi;
+    here?: HereDesktopApi;
   }
 }
 

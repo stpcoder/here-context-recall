@@ -2,6 +2,8 @@
 
 > “방금 내가 왜 이 창을 열었지?”에, 최근 흐름으로 답하는 데스크톱 버튼.
 
+[제품 소개](https://stpcoder.github.io/here-context-recall/) · [화면으로 보는 3분 사용법](https://stpcoder.github.io/here-context-recall/manual/) · [최신 빌드](https://github.com/stpcoder/here-context-recall/releases/tag/latest-build)
+
 Here는 모든 것을 기록하는 memory AI가 아닙니다. 사용자가 허용한 뒤 **현재 포그라운드 앱과 창 제목의 전환**만 짧게 보관합니다. `Ctrl+Shift+Space`로 최근 흐름을 되짚고, `Ctrl+Shift+M`으로 지금 지점을 명시적으로 기억해 다음 날 다시 엽니다. macOS에서는 `Ctrl` 대신 `Command`를 사용합니다.
 
 Windows에서 먼저 쓰도록 만든 Electron 데스크톱 유틸리티입니다. 브라우저 데모나 가짜 Office/Slack 화면을 사용하지 않습니다.
@@ -52,13 +54,14 @@ Windows 설치본은 설치 마지막 단계에서 **Here 실행**이 기본 선
 
 ## OpenAI-compatible / vLLM
 
-설정 화면에서 Endpoint, 모델 ID, API key(선택)를 넣습니다.
+설정 화면의 **Work AI**에서 Base URL, Model ID, Bearer token을 넣습니다. 로컬 무인증 vLLM은 token을 생략할 수 있습니다.
 
-- Endpoint 예: `http://127.0.0.1:8000/v1`, 사내 HTTPS gateway
-- 연결 확인: `GET {endpoint}/models`
-- 복원 요청: `POST {endpoint}/chat/completions`
+- Base URL 예: `http://127.0.0.1:8000/v1`, 사내 HTTPS gateway
+- 연결 확인: 선택한 Model ID로 `POST {baseUrl}/chat/completions`를 실제 호출
+- 모델 목록: `GET {baseUrl}/models`를 지원할 때만 보조적으로 확인
+- 복원 요청: `POST {baseUrl}/chat/completions`
 
-`response_format`을 지원하지 않는 호환 서버에는 일반 JSON 요청으로 한 번 재시도합니다. Endpoint가 비어 있거나 모델 호출에 실패해도 결정적 로컬 체인은 남습니다. 사내 데이터 정책에 따라 제목 metadata를 모델로 보내도 되는지 먼저 확인하세요.
+`response_format`을 지원하지 않는 호환 서버에는 일반 JSON 요청으로 재시도합니다. 창 이미지 옵션이 켜져 있어도 text-only 모델이 이미지 입력을 거부하면 관측된 텍스트 근거만으로 자동 전환합니다. Base URL이 비어 있거나 모델 호출에 실패해도 결정적 로컬 체인은 남습니다. Bearer token은 OS 보호 저장소에 암호화하고 renderer에는 전달하지 않습니다. 사내 데이터 정책에 따라 제목 metadata를 모델로 보내도 되는지 먼저 확인하세요.
 
 ## Vertex AI / Gemini VLM
 
@@ -79,6 +82,9 @@ Node.js 22 LTS를 권장합니다.
 ```bash
 npm ci
 npm run dev
+
+# 제품 랜딩/이미지 매뉴얼
+npm run site:dev
 ```
 
 개발 앱을 열고 Settings에서 캡처 동의를 켠 뒤, 실제로 앱을 몇 번 전환해 보세요. `Ctrl+Shift+Space`로 최근 체인을 확인하고 `Ctrl+Shift+M`으로 현재 지점을 저장할 수 있습니다.
@@ -87,6 +93,7 @@ npm run dev
 npm run typecheck
 npm test
 npm run build
+npm run site:build
 ```
 
 `build`는 타입 검사, 단위 테스트, Electron 번들을 수행합니다. 설치 파일은 만들지 않습니다.
@@ -107,6 +114,8 @@ npm run dist:mac
 결과물은 `release/<version>/`에 생성됩니다. Windows 실행 검증과 NSIS 설치본은 GitHub Actions의 Windows runner에서 수행하는 것을 기준으로 합니다. macOS 호스트에서 Windows 동작을 검증했다고 주장하지 않습니다.
 
 `.github/workflows/build-desktop.yml`은 pull request, `main` push, 태그(`v*`), 수동 실행에서 Windows와 macOS를 각각 빌드합니다. `main` 빌드가 모두 성공하면 `latest-build` rolling prerelease를 갱신해 README의 고정 다운로드 URL을 새 파일과 SHA-256 체크섬으로 교체합니다. Windows 코드 서명은 `WINDOWS_CERTIFICATE`, `WINDOWS_CERTIFICATE_PASSWORD` secrets가 있을 때만 적용됩니다. 현재 macOS 구성은 배포용 Developer ID 서명·notarization 없이 ad-hoc 서명만 적용되므로 Gatekeeper 경고가 날 수 있습니다.
+
+`.github/workflows/deploy-site.yml`은 `main`에 push할 때마다 Pretendard 기반 한국어 제품 페이지와 이미지 사용법을 빌드해 GitHub Pages에 자동 배포합니다.
 
 ## 알려진 한계
 

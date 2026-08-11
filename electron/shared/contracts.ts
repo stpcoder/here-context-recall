@@ -206,6 +206,12 @@ export interface RecallState {
 export interface ConnectionTestResult {
   ok: boolean;
   models: string[];
+  selectedModel?: string;
+  /** True only after the selected model answered a real chat-completions call. */
+  chatCompletionVerified?: boolean;
+  /** `/models` is useful discovery, but is not required by every internal gateway. */
+  modelsEndpointAvailable?: boolean;
+  latencyMs?: number;
   error?: string;
 }
 

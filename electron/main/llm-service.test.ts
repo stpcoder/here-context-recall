@@ -24,21 +24,62 @@ const config = {
 };
 
 describe("LlmService", () => {
-  it("tests OpenAI-compatible models endpoint", async () => {
+  it("verifies the selected OpenAI-compatible model with a real chat call", async () => {
     const fetch = vi
       .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [{ message: { content: "HERE_OK" } }],
+          }),
+          { status: 200 },
+        ),
+      )
       .mockResolvedValue(
         new Response(JSON.stringify({ data: [{ id: "qwen" }] }), {
           status: 200,
         }),
       );
     const service = new LlmService({ getConfiguration: () => config, fetch });
-    await expect(service.testConnection()).resolves.toEqual({
+    await expect(service.testConnection()).resolves.toMatchObject({
       ok: true,
       models: ["qwen"],
+      selectedModel: "qwen",
+      chatCompletionVerified: true,
+      modelsEndpointAvailable: true,
     });
-    expect(fetch.mock.calls[0][0]).toBe("http://127.0.0.1:8000/v1/models");
+    expect(fetch.mock.calls[0][0]).toBe(
+      "http://127.0.0.1:8000/v1/chat/completions",
+    );
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({
+      model: "qwen",
+    });
+    expect(fetch.mock.calls[0][1].headers).toMatchObject({
+      Authorization: "Bearer secret",
+    });
+    expect(fetch.mock.calls[1][0]).toBe("http://127.0.0.1:8000/v1/models");
     expect(fetch.mock.calls[0][1].redirect).toBe("error");
+  });
+
+  it("accepts a chat-only internal gateway without a models endpoint", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ choices: [{ message: { content: "HERE_OK" } }] }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response("not exposed", { status: 404 }));
+    await expect(
+      new LlmService({ getConfiguration: () => config, fetch }).testConnection(),
+    ).resolves.toMatchObject({
+      ok: true,
+      models: ["qwen"],
+      selectedModel: "qwen",
+      chatCompletionVerified: true,
+      modelsEndpointAvailable: false,
+    });
   });
 
   it("retries without response_format and validates cited evidence IDs", async () => {
@@ -112,6 +153,28 @@ describe("LlmService", () => {
     ).toThrow(/query/);
   });
 
+  it("accepts a pasted full chat-completions URL as a Base URL", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ choices: [{ message: { content: "HERE_OK" } }] }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response("hidden", { status: 404 }));
+    await new LlmService({
+      getConfiguration: () => ({
+        ...config,
+        endpoint: "http://127.0.0.1:8000/v1/chat/completions",
+      }),
+      fetch,
+    }).testConnection();
+    expect(fetch.mock.calls[0][0]).toBe(
+      "http://127.0.0.1:8000/v1/chat/completions",
+    );
+  });
+
   it("rejects oversized model responses and uses the local result", async () => {
     const fetch = vi
       .fn()
@@ -150,9 +213,11 @@ describe("LlmService", () => {
       fetch,
     });
 
-    await expect(service.testConnection()).resolves.toEqual({
+    await expect(service.testConnection()).resolves.toMatchObject({
       ok: true,
       models: ["gemini-3.5-flash"],
+      selectedModel: "gemini-3.5-flash",
+      chatCompletionVerified: true,
     });
     expect(fetch.mock.calls[0][0]).toBe(
       "https://aiplatform.googleapis.com/v1/projects/project-12345/locations/global/publishers/google/models/gemini-3.5-flash:generateContent",

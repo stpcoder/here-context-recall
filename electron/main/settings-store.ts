@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { z } from "zod";
+import { normalizeOpenAiEndpoint } from "./openai-endpoint";
 
 /** A deliberately small subset of Electron's safeStorage, making this class testable. */
 export interface SafeStorage {
@@ -109,7 +110,7 @@ export class SettingsStore {
       ...current,
       ...validPatch,
       endpoint: validPatch.endpoint
-        ? normalizeEndpoint(validPatch.endpoint)
+        ? normalizeOpenAiEndpoint(validPatch.endpoint)
         : current.endpoint,
       excludedApps: validPatch.excludedApps
         ? normalizeExcludedApps(validPatch.excludedApps)
@@ -177,7 +178,7 @@ export class SettingsStore {
       const settings = persistedSettingsSchema.parse(parsed);
       return {
         ...settings,
-        endpoint: normalizeEndpoint(settings.endpoint),
+        endpoint: normalizeOpenAiEndpoint(settings.endpoint),
         excludedApps: normalizeExcludedApps(settings.excludedApps),
       };
     } catch (error: unknown) {
@@ -208,10 +209,6 @@ export class SettingsStore {
     const { encryptedApiKey, ...publicSettings } = settings;
     return { ...publicSettings, apiKeyConfigured: Boolean(encryptedApiKey) };
   }
-}
-
-function normalizeEndpoint(value: string): string {
-  return value.trim().replace(/\/+$/, "");
 }
 
 function normalizeExcludedApps(apps: string[]): string[] {

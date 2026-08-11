@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  net,
   Notification,
   safeStorage,
   screen,
@@ -854,6 +855,9 @@ async function bootstrap(): Promise<void> {
         apiKey: await store.getApiKey(),
       };
     },
+    // Electron's network stack follows the desktop's proxy and certificate
+    // configuration, which is essential for internal vLLM gateways.
+    fetch: net.fetch as typeof fetch,
   });
   session.defaultSession.setPermissionRequestHandler(
     (_webContents, _permission, callback) => callback(false),

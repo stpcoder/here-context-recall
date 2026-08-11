@@ -25,14 +25,32 @@ import type {
   ActivityEvent,
   CheckpointState,
   DesktopBootstrap,
+  HereDesktopApi,
   ModelProvider,
   PublicSettings,
   RecallState,
 } from "../electron/shared/contracts";
+import { createShowcaseApi } from "./showcase-api";
 
 type Surface = "bubble" | "recall" | "settings";
 
-const api = window.here;
+const query = new URLSearchParams(window.location.search);
+const showcase = import.meta.env.DEV && query.get("showcase") === "1";
+if (showcase && query.get("captureScale")) {
+  const scale = Math.max(1, Math.min(3, Number(query.get("captureScale")) || 1));
+  const width = Math.max(320, Number(query.get("captureWidth")) || 820);
+  const height = Math.max(320, Number(query.get("captureHeight")) || 700);
+  document.documentElement.dataset.showcaseCapture = "true";
+  document.documentElement.style.setProperty("--showcase-scale", String(scale));
+  document.documentElement.style.setProperty("--showcase-width", `${width}px`);
+  document.documentElement.style.setProperty("--showcase-height", `${height}px`);
+}
+function resolveApi(): HereDesktopApi {
+  const bridge = window.here ?? (showcase ? createShowcaseApi() : undefined);
+  if (!bridge) throw new Error("Here desktop bridge is unavailable.");
+  return bridge;
+}
+const api = resolveApi();
 
 function getSurface(): Surface {
   const value = new URLSearchParams(window.location.search).get("surface");
@@ -272,8 +290,8 @@ function RecallPanel() {
   const modelLabel =
     state?.reconstruction?.source === "model"
       ? settings?.modelProvider === "vertex-gcloud"
-        ? "Gemini 3.5 Flash"
-        : "연결한 모델"
+        ? settings.model || "Vertex QA"
+        : settings?.model || "업무 모델"
       : "로컬 근거";
   const saved = state?.checkpoint ?? checkpoint?.latest;
 
@@ -374,6 +392,7 @@ function SettingsPanel() {
   const [key, setKey] = useState("");
   const [exclude, setExclude] = useState("");
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [notice, setNotice] = useState<string>();
   const [showKey, setShowKey] = useState(false);
 
@@ -389,10 +408,13 @@ function SettingsPanel() {
     });
   }, []);
 
-  const update = <K extends keyof PublicSettings>(field: K, value: PublicSettings[K]) =>
+  const update = <K extends keyof PublicSettings>(field: K, value: PublicSettings[K]) => {
+    setNotice(undefined);
     setSettings((current) => (current ? { ...current, [field]: value } : current));
+  };
 
-  const chooseProvider = (provider: ModelProvider) =>
+  const chooseProvider = (provider: ModelProvider) => {
+    setNotice(undefined);
     setSettings((current) => {
       if (!current) return current;
       return {
@@ -408,6 +430,7 @@ function SettingsPanel() {
               : current.model,
       };
     });
+  };
 
   const save = async () => {
     if (!settings) return;
@@ -444,7 +467,8 @@ function SettingsPanel() {
 
   const test = async () => {
     if (!settings) return;
-    setNotice(settings.modelProvider === "vertex-gcloud" ? "gcloud로 Vertex 확인 중…" : "연결 확인 중…");
+    setTesting(true);
+    setNotice(settings.modelProvider === "vertex-gcloud" ? "로컬 QA 모델 호출 중…" : "선택한 업무 모델 호출 중…");
     try {
       const result = await api.testConnection({
         modelProvider: settings.modelProvider,
@@ -454,9 +478,15 @@ function SettingsPanel() {
         vertexLocation: settings.vertexLocation,
         apiKey: key || undefined,
       });
-      setNotice(result.ok ? `연결됨 · ${result.models[0] || "모델 확인"}` : result.error || "연결하지 못했어요");
+      setNotice(
+        result.ok && result.chatCompletionVerified
+          ? `실제 호출 성공 · ${result.selectedModel || settings.model}${result.latencyMs !== undefined ? ` · ${result.latencyMs}ms` : ""} · 저장을 눌러 적용`
+          : result.error || "선택한 모델을 호출하지 못했어요",
+      );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "연결하지 못했어요");
+    } finally {
+      setTesting(false);
     }
   };
 
@@ -493,19 +523,19 @@ function SettingsPanel() {
             <p>평소에는 앱·창 제목 전환만 메모리에 둡니다. 화면 한 장은 아래 옵션을 켜고 직접 기억하거나 복원할 때만 사용합니다.</p>
           </div>
           <Toggle checked={settings.captureConsent} onChange={(value) => update("captureConsent", value)} label="창 흐름 허용" detail={`최근 ${settings.retentionMinutes}분 · 종료하면 삭제`} />
-          <Toggle checked={settings.includeWindowImage} onChange={(value) => update("includeWindowImage", value)} label="복원 순간의 창 한 장 보기" detail="VLM 분석과 암호화 체크포인트에만 사용" />
+          <Toggle checked={settings.includeWindowImage} onChange={(value) => update("includeWindowImage", value)} label="복원 순간의 창 한 장 보기" detail="VLM이면 이미지, text-only 모델이면 창 근거로 자동 전환" />
         </section>
 
         <section className="setting-section model-section">
-          <div className="section-title"><span>AI 연결</span><small>선택 사항 · 실패해도 로컬 복원</small></div>
+          <div className="section-title"><span>업무 모델 연결</span><small>vLLM / OpenAI-compatible</small></div>
           <div className="provider-grid">
-            <ProviderChoice value="vertex-gcloud" active={isVertex} icon={<Cloud size={17} />} label="Vertex AI" detail="gcloud · Gemini VLM" onClick={chooseProvider} />
-            <ProviderChoice value="openai-compatible" active={!isVertex} icon={<Server size={17} />} label="OpenAI 호환" detail="vLLM · 사내 endpoint" onClick={chooseProvider} />
+            <ProviderChoice value="openai-compatible" active={!isVertex} icon={<Server size={17} />} label="Work AI" detail="사내 vLLM · Bearer token" onClick={chooseProvider} />
+            <ProviderChoice value="vertex-gcloud" active={isVertex} icon={<Cloud size={17} />} label="Vertex QA" detail="로컬 Mac 검증용" onClick={chooseProvider} />
           </div>
 
           {isVertex ? (
             <div className="provider-fields" key="vertex-fields">
-              <div className="vertex-banner"><Zap size={14} /><span><b>Gemini 3.5 Flash</b><small>이미지와 창 흐름을 함께 이해합니다.</small></span><em>gcloud</em></div>
+              <div className="vertex-banner"><Cloud size={14} /><span><b>Local QA only</b><small>Mac에서 흐름과 이미지 품질을 검증합니다.</small></span><em>gcloud</em></div>
               <label className="field"><span>Google Cloud project</span><input aria-label="Google Cloud project" value={settings.vertexProject} onChange={(event) => update("vertexProject", event.target.value)} placeholder="비워두면 gcloud 현재 project 사용" /></label>
               <div className="field-pair">
                 <label className="field"><span>Location</span><input aria-label="Vertex location" value={settings.vertexLocation} onChange={(event) => update("vertexLocation", event.target.value)} placeholder="global" /></label>
@@ -514,14 +544,15 @@ function SettingsPanel() {
             </div>
           ) : (
             <div className="provider-fields" key="openai-fields">
-              <label className="field"><span>Endpoint</span><input aria-label="OpenAI-compatible endpoint" value={settings.endpoint} onChange={(event) => update("endpoint", event.target.value)} placeholder="http://127.0.0.1:8000/v1" /></label>
-              <label className="field"><span>Model</span><input aria-label="OpenAI-compatible model" value={settings.model} onChange={(event) => update("model", event.target.value)} placeholder="Qwen/Qwen2.5-7B-Instruct" /></label>
-              <label className="field"><span>API key <em>{settings.apiKeyConfigured ? "저장됨" : "선택"}</em></span><div className="key-input"><input type={showKey ? "text" : "password"} value={key} onChange={(event) => setKey(event.target.value)} placeholder={settings.apiKeyConfigured ? "새 키를 입력하면 교체" : "OS 암호화 저장"} autoComplete="off" /><button onClick={() => setShowKey(!showKey)} aria-label={showKey ? "키 숨기기" : "키 보기"}>{showKey ? <EyeOff size={16} /> : <Eye size={16} />}</button></div></label>
+              <div className="work-model-banner"><Server size={14} /><span><b>사내 모델에 직접 연결</b><small>Base URL · Model ID · Bearer token</small></span><em>PRIMARY</em></div>
+              <label className="field"><span>Base URL <em>/v1 포함</em></span><input aria-label="OpenAI-compatible Base URL" value={settings.endpoint} onChange={(event) => update("endpoint", event.target.value)} placeholder="https://llm.company.internal/v1" /><small className="field-hint">호출 경로: POST /chat/completions</small></label>
+              <label className="field"><span>Model ID</span><input aria-label="OpenAI-compatible Model ID" value={settings.model} onChange={(event) => update("model", event.target.value)} placeholder="Qwen/Qwen2.5-72B-Instruct" /></label>
+              <label className="field"><span>Bearer token <em>{settings.apiKeyConfigured ? "OS에 저장됨" : "로컬 무인증은 생략 가능"}</em></span><div className="key-input"><input aria-label="Bearer token" type={showKey ? "text" : "password"} value={key} onChange={(event) => { setNotice(undefined); setKey(event.target.value); }} placeholder={settings.apiKeyConfigured ? "새 token을 입력하면 교체" : "sk-… · OS 암호화 저장"} autoComplete="new-password" spellCheck={false} /><button onClick={() => setShowKey(!showKey)} aria-label={showKey ? "token 숨기기" : "token 보기"}>{showKey ? <EyeOff size={16} /> : <Eye size={16} />}</button></div></label>
             </div>
           )}
           <div className="inline-actions">
-            <button className="test-button" onClick={() => void test()}><Zap size={13} /> 연결 확인</button>
-            {!isVertex && settings.apiKeyConfigured && <button className="test-button muted-action" onClick={() => void removeKey()}>키 삭제</button>}
+            <button className="test-button" disabled={testing} onClick={() => void test()}>{testing ? <LoaderCircle className="spinner" size={13} /> : <Zap size={13} />} {isVertex ? "QA 모델 호출" : "업무 모델 호출 테스트"}</button>
+            {!isVertex && settings.apiKeyConfigured && <button className="test-button muted-action" onClick={() => void removeKey()}>token 삭제</button>}
           </div>
         </section>
 

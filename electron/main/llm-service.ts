@@ -4,6 +4,12 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import { z } from "zod";
 import type { ModelProvider } from "../shared/contracts";
+import type { ConnectionTestResult } from "../shared/contracts";
+import {
+  normalizeOpenAiEndpoint,
+  openAiApiUrl,
+  validateOpenAiEndpoint,
+} from "./openai-endpoint";
 
 export type Evidence = {
   id: string;
@@ -103,7 +109,8 @@ export class LlmService {
 
   async testConnection(
     input?: LlmConfiguration,
-  ): Promise<{ ok: boolean; models: string[]; error?: string }> {
+  ): Promise<ConnectionTestResult> {
+    const startedAt = Date.now();
     try {
       const config = await this.getValidConfiguration(input);
       if (provider(config) === "vertex-gcloud") {
@@ -131,27 +138,78 @@ export class LlmService {
             error: await vertexError(response),
           };
         await responseJson(response);
-        return { ok: true, models: [config.model] };
+        return {
+          ok: true,
+          models: [config.model],
+          selectedModel: config.model,
+          chatCompletionVerified: true,
+          modelsEndpointAvailable: false,
+          latencyMs: Date.now() - startedAt,
+        };
       }
-
-      const response = await this.fetchWithTimeout(
-        joinApiUrl(config.endpoint, "models"),
-        { headers: this.openAiHeaders(config.apiKey) },
+      const chatResponse = await this.fetchWithTimeout(
+        openAiApiUrl(config.endpoint, "chat/completions"),
+        {
+          method: "POST",
+          headers: this.openAiHeaders(config.apiKey),
+          body: JSON.stringify({
+            model: config.model,
+            temperature: 0,
+            max_tokens: 16,
+            messages: [
+              { role: "user", content: "Reply with HERE_OK only." },
+            ],
+          }),
+        },
       );
-      if (!response.ok)
+      if (!chatResponse.ok)
         return {
           ok: false,
           models: [],
-          error: `Model endpoint returned ${response.status}.`,
+          selectedModel: config.model,
+          chatCompletionVerified: false,
+          modelsEndpointAvailable: false,
+          latencyMs: Date.now() - startedAt,
+          error: openAiConnectionError(chatResponse.status),
         };
-      const body: unknown = await responseJson(response);
-      const models = z
-        .object({ data: z.array(z.object({ id: z.string() })) })
-        .parse(body)
-        .data.map(({ id }) => id);
-      return { ok: true, models };
+      parseChatContent(await responseJson(chatResponse));
+
+      let models = [config.model];
+      let modelsEndpointAvailable = false;
+      try {
+        const modelsResponse = await this.fetchWithTimeout(
+          openAiApiUrl(config.endpoint, "models"),
+          { headers: this.openAiHeaders(config.apiKey) },
+        );
+        if (modelsResponse.ok) {
+          models = z
+            .object({ data: z.array(z.object({ id: z.string() })) })
+            .parse(await responseJson(modelsResponse))
+            .data.map(({ id }) => id);
+          modelsEndpointAvailable = true;
+        }
+      } catch {
+        // Some internal gateways expose chat completions but intentionally do
+        // not expose model discovery. The verified chat call remains decisive.
+      }
+      if (!models.includes(config.model)) models.unshift(config.model);
+      return {
+        ok: true,
+        models,
+        selectedModel: config.model,
+        chatCompletionVerified: true,
+        modelsEndpointAvailable,
+        latencyMs: Date.now() - startedAt,
+      };
     } catch (error) {
-      return { ok: false, models: [], error: readableError(error) };
+      return {
+        ok: false,
+        models: [],
+        chatCompletionVerified: false,
+        modelsEndpointAvailable: false,
+        latencyMs: Date.now() - startedAt,
+        error: readableError(error),
+      };
     }
   }
 
@@ -193,40 +251,41 @@ export class LlmService {
     current?: ReconstructionCurrent,
     vision?: VisionContext,
   ): Promise<z.infer<typeof reconstructionSchema>> {
-    let response = await this.fetchWithTimeout(
-      joinApiUrl(config.endpoint, "chat/completions"),
-      {
-        method: "POST",
-        headers: this.openAiHeaders(config.apiKey),
-        body: JSON.stringify(
-          this.openAiPayload(config.model, evidence, true, current, vision),
-        ),
-      },
-    );
-    // vLLM and older compatible servers can reject response_format entirely.
-    if (!response.ok && (response.status === 400 || response.status === 422)) {
-      response = await this.fetchWithTimeout(
-        joinApiUrl(config.endpoint, "chat/completions"),
+    const variants = vision
+      ? [
+          { structured: true, vision },
+          { structured: false, vision },
+          { structured: true, vision: undefined },
+          { structured: false, vision: undefined },
+        ]
+      : [
+          { structured: true, vision: undefined },
+          { structured: false, vision: undefined },
+        ];
+    let lastStatus = 0;
+    for (const variant of variants) {
+      const response = await this.fetchWithTimeout(
+        openAiApiUrl(config.endpoint, "chat/completions"),
         {
           method: "POST",
           headers: this.openAiHeaders(config.apiKey),
           body: JSON.stringify(
-            this.openAiPayload(config.model, evidence, false, current, vision),
+            this.openAiPayload(
+              config.model,
+              evidence,
+              variant.structured,
+              current,
+              variant.vision,
+            ),
           ),
         },
       );
+      if (response.ok)
+        return parseReconstruction(parseChatContent(await responseJson(response)));
+      lastStatus = response.status;
+      if (![400, 415, 422].includes(response.status)) break;
     }
-    if (!response.ok)
-      throw new Error(`Chat endpoint returned ${response.status}.`);
-    const body: unknown = await responseJson(response);
-    const content = z
-      .object({
-        choices: z
-          .array(z.object({ message: z.object({ content: z.string() }) }))
-          .min(1),
-      })
-      .parse(body).choices[0].message.content;
-    return parseReconstruction(content);
+    throw new Error(`Chat endpoint returned ${lastStatus || "an error"}.`);
   }
 
   private async reconstructVertex(
@@ -313,12 +372,13 @@ export class LlmService {
       validateVertexConfiguration(next);
       return next;
     }
-    validateEndpoint(configuration.endpoint);
+    validateOpenAiEndpoint(configuration.endpoint);
     return {
       ...configuration,
       modelProvider: "openai-compatible",
-      endpoint: configuration.endpoint.replace(/\/+$/, ""),
+      endpoint: normalizeOpenAiEndpoint(configuration.endpoint),
       model: configuration.model.trim(),
+      apiKey: configuration.apiKey?.trim() || undefined,
     };
   }
 
@@ -388,24 +448,7 @@ export class LlmService {
   }
 }
 
-export function validateEndpoint(value: string): void {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    throw new Error("Enter a valid API endpoint URL.");
-  }
-  if (url.username || url.password || url.search || url.hash)
-    throw new Error(
-      "API endpoint must not contain credentials, a query, or a fragment.",
-    );
-  if (url.protocol === "https:") return;
-  if (url.protocol !== "http:" || !isLocalOrPrivateHost(url.hostname)) {
-    throw new Error(
-      "API endpoint must use HTTPS, except localhost or private-network HTTP.",
-    );
-  }
-}
+export const validateEndpoint = validateOpenAiEndpoint;
 
 function validateVertexConfiguration(config: LlmConfiguration): void {
   const project = config.vertexProject?.trim() ?? "";
@@ -554,34 +597,6 @@ function systemPrompt(hasImage: boolean): string {
   ].join(" ");
 }
 
-function isLocalOrPrivateHost(host: string): boolean {
-  const normalized = host.toLowerCase().replace(/^\[|\]$/g, "");
-  if (
-    normalized === "localhost" ||
-    normalized.endsWith(".localhost") ||
-    normalized.endsWith(".local") ||
-    normalized === "host.docker.internal" ||
-    normalized === "::1"
-  )
-    return true;
-  const parts = normalized.split(".").map(Number);
-  if (
-    parts.length !== 4 ||
-    parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)
-  )
-    return false;
-  return (
-    parts[0] === 10 ||
-    parts[0] === 127 ||
-    (parts[0] === 192 && parts[1] === 168) ||
-    (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31)
-  );
-}
-
-function joinApiUrl(endpoint: string, path: string): string {
-  return `${endpoint.replace(/\/+$/, "")}/${path}`;
-}
-
 function parseReconstruction(value: string): z.infer<typeof reconstructionSchema> {
   return reconstructionSchema.parse(JSON.parse(stripCodeFence(value)));
 }
@@ -594,7 +609,32 @@ function stripCodeFence(value: string): string {
 }
 
 function readableError(error: unknown): string {
+  if (error instanceof DOMException && error.name === "AbortError")
+    return "Model server timed out.";
+  if (error instanceof TypeError) return "Could not reach the model server.";
   return error instanceof Error ? error.message : "Connection failed.";
+}
+
+function parseChatContent(body: unknown): string {
+  return z
+    .object({
+      choices: z
+        .array(z.object({ message: z.object({ content: z.string().min(1) }) }))
+        .min(1),
+    })
+    .parse(body).choices[0].message.content;
+}
+
+function openAiConnectionError(status: number): string {
+  if (status === 401) return "Bearer token이 거부되었습니다 (401).";
+  if (status === 403) return "선택한 모델을 호출할 권한이 없습니다 (403).";
+  if (status === 404)
+    return "Base URL의 /chat/completions 경로를 찾지 못했습니다 (404).";
+  if (status === 429) return "모델 서버가 요청을 제한했습니다 (429).";
+  if (status === 400 || status === 422)
+    return `Model ID 또는 OpenAI 호환 요청 설정을 확인하세요 (${status}).`;
+  if (status >= 500) return `모델 서버가 오류를 반환했습니다 (${status}).`;
+  return `Chat completion 호출에 실패했습니다 (${status}).`;
 }
 
 function validateEvidence(evidence: Evidence[]): Evidence[] {
