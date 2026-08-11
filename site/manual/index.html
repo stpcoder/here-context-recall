@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f5f5f5" />
     <meta name="description" content="Here를 설치하고, 끊긴 업무를 복원하고, 사내 vLLM을 연결하는 60초 빠른 시작 가이드." />
     <meta property="og:title" content="Here 빠른 시작 — 설정은 한 번, 복원은 한 번" />
-    <meta property="og:description" content="설치부터 왜 여기지?, 여기 기억, 사내 OpenAI-compatible 모델 연결까지." />
+    <meta property="og:description" content="설치부터 왜 여기지?, 나중에 이어보기, 사내 OpenAI-compatible 모델 연결까지." />
     <meta property="og:image" content="https://stpcoder.github.io/here-context-recall/images/og-cover.png" />
     <link rel="icon" href="/here-mark.svg" />
     <link rel="stylesheet" href="../styles.css" />
@@ -21,7 +21,7 @@
       <nav aria-label="빠른 시작 메뉴">
         <a href="#allow">처음 설정</a>
         <a href="#recall">맥락 복원</a>
-        <a href="#remember">여기 기억</a>
+        <a href="#remember">나중에 이어보기</a>
         <a href="#model">사내 AI</a>
       </nav>
       <a class="header-cta" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows 받기 <span>↓</span></a>
@@ -88,7 +88,7 @@
             <span class="step-number">02</span>
             <p class="section-kicker">필요한 순간에</p>
             <h2>“왜 여기지?”</h2>
-            <p>현재 창에서 단축키를 누르면, 이 창을 열기 전부터 다시 돌아온 순간까지 시간순으로 보여줍니다.</p>
+            <p>현재 창에서 단축키를 누르면, 파일을 연 이유와 세 구간만 보여줍니다.</p>
           </header>
 
           <div class="shortcut-card reveal" data-delay="1">
@@ -99,16 +99,15 @@
           <figure class="manual-figure landscape reveal">
             <div class="screenshot-frame">
               <div class="window-bar"><i></i><i></i><i></i><span>Here · 맥락 복원</span></div>
-              <img src="/images/here-recall.png" width="1800" height="1240" loading="lazy" decoding="async" alt="Here가 Teams 요청, Excel 열기, Outlook 이동, Excel 복귀를 시간순으로 보여주는 화면" />
+              <img src="/images/here-recall.png" width="1720" height="1080" loading="lazy" decoding="async" alt="Here가 현재 파일을 연 이유와 열기까지, 자리를 비운 동안, 현재 위치를 보여주는 화면" />
             </div>
             <figcaption>관측된 창 전환만 근거로 사용하고, 모델이 만든 근거는 표시하지 않습니다.</figcaption>
           </figure>
 
           <ol class="result-grid reveal" aria-label="복원 결과 구성">
-            <li><span>01</span><strong>열기 전</strong><p>현재 창으로 오기 직전의 일</p></li>
-            <li><span>02</span><strong>이 창을 열음</strong><p>현재 파일을 처음 연 시각</p></li>
-            <li><span>03</span><strong>다른 창</strong><p>자리를 비운 동안 본 창</p></li>
-            <li><span>04</span><strong>지금 복귀</strong><p>현재 창과 이어서 할 일</p></li>
+            <li><span>01</span><strong>열기까지</strong><p>현재 파일로 이어진 실제 창</p></li>
+            <li><span>02</span><strong>자리를 비운 동안</strong><p>중간에 확인한 다른 창</p></li>
+            <li><span>03</span><strong>현재</strong><p>돌아온 파일과 다음 행동</p></li>
           </ol>
         </section>
 
@@ -116,7 +115,7 @@
           <article class="next-card reveal" id="remember">
             <span class="step-number">03</span>
             <p class="section-kicker">긴 중단 전</p>
-            <h2>여기 기억.</h2>
+            <h2>나중에<br />이어보기.</h2>
             <p>회의 전이나 퇴근 전에 지금 지점만 남깁니다. 다음 날에도 같은 작업 대상과 다음 행동으로 돌아옵니다.</p>
             <div class="key-row"><span>Windows</span><kbd>Ctrl ⇧ M</kbd></div>
             <div class="key-row"><span>macOS</span><kbd>⌘ ⇧ M</kbd></div>

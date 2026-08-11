@@ -79,8 +79,9 @@ function createShowcaseWindowImage(): CheckpointImage | undefined {
  * `?showcase=1` in a Vite development browser.
  */
 export function createShowcaseApi(): HereDesktopApi {
-  const includeWindowImage =
-    new URLSearchParams(window.location.search).get("noImage") !== "1";
+  const showcaseQuery = new URLSearchParams(window.location.search);
+  const includeWindowImage = showcaseQuery.get("noImage") !== "1";
+  const useSavedContext = showcaseQuery.get("saved") === "1";
   const at = (minute: number) =>
     new Date(`2026-08-11T05:${String(minute).padStart(2, "0")}:00Z`).getTime();
   const event = (
@@ -104,7 +105,7 @@ export function createShowcaseApi(): HereDesktopApi {
     event("return", 36, "Microsoft Excel", "Q3_예산검토.xlsx"),
   ];
   const explanation = {
-    answer: "Q3 예산안 숫자를 확인하던 중이었습니다.",
+    answer: "Q3 예산안 숫자를 확인하려고 열었어요.",
     origin: "Microsoft Teams — 재무팀 · Q3 예산안 숫자 확인 부탁드립니다",
     nextAction: "비용 증감 열의 합계 확인",
     interrupted: true,
@@ -163,7 +164,7 @@ export function createShowcaseApi(): HereDesktopApi {
     "saved",
     42,
     "Microsoft Excel",
-    "Q3_budget_review.xlsx",
+    "Q3_예산검토.xlsx",
   );
   const checkpoint: ContextCheckpoint = {
     id: "cp-1",
@@ -182,19 +183,21 @@ export function createShowcaseApi(): HereDesktopApi {
   const recall: RecallState = {
     status: "ready",
     trigger: "hotkey",
-    current: events[4],
+    current: useSavedContext ? savedEvent : events[4],
     explanation,
-    reconstruction: {
-      summary: "Q3 예산안 숫자를 확인하던 중이었습니다.",
-      target: "비용 증감 열",
-      evidenceIds: events.map(({ id }) => id),
-      nextAction: "비용 증감 열의 합계 확인",
-      source: "model",
-    },
+    reconstruction: useSavedContext
+      ? checkpoint.reconstruction
+      : {
+          summary: "Q3 예산안 숫자를 확인하려고 열었어요.",
+          target: "비용 증감 열",
+          evidenceIds: events.map(({ id }) => id),
+          nextAction: "비용 증감 열의 합계 확인",
+          source: "model",
+        },
     checkpoint,
-    mode: "recent",
+    mode: useSavedContext ? "checkpoint" : "recent",
     contextImage: includeWindowImage ? createShowcaseWindowImage() : undefined,
-    updatedAt: at(36),
+    updatedAt: useSavedContext ? checkpoint.createdAt : at(36),
   };
   const checkpointState: CheckpointState = {
     status: "saved",
