@@ -15,11 +15,18 @@ const endpoint = z.string().trim().url().max(2_048);
 
 const persistedSettingsSchema = z.object({
   version: z.literal(1),
+  modelProvider: z
+    .enum(["openai-compatible", "vertex-gcloud"])
+    .default("openai-compatible"),
   endpoint,
   // Empty is valid during first-run onboarding; LlmService rejects it at request time.
   model: z.string().trim().max(300),
+  vertexProject: z.string().trim().max(300).default(""),
+  vertexLocation: z.string().trim().min(1).max(100).default("global"),
+  includeWindowImage: z.boolean().default(false),
   captureConsent: z.boolean(),
   shortcut,
+  checkpointShortcut: shortcut.default("CommandOrControl+Shift+M"),
   retentionMinutes: z
     .number()
     .int()
@@ -44,10 +51,15 @@ export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
 export const DEFAULT_SETTINGS: Omit<PersistedSettings, "encryptedApiKey"> = {
   version: 1,
+  modelProvider: "openai-compatible",
   endpoint: "http://127.0.0.1:8000/v1",
   model: "",
+  vertexProject: "",
+  vertexLocation: "global",
+  includeWindowImage: false,
   captureConsent: false,
   shortcut: "CommandOrControl+Shift+Space",
+  checkpointShortcut: "CommandOrControl+Shift+M",
   retentionMinutes: 10,
   excludedApps: [],
   showBubble: true,

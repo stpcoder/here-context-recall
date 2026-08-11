@@ -1,7 +1,8 @@
 /**
  * The only data that crosses Electron's process boundary.  Keep this small:
- * titles can contain work content, so no screenshots, keystrokes, or document
- * bodies are ever part of an activity event.
+ * titles can contain work content, so screenshots, keystrokes, and document
+ * bodies are never part of the background activity stream. A screenshot can
+ * cross separately only after an explicit remember/recall action and opt-in.
  */
 export type ActivityEventKind =
   | "window-focus"
@@ -105,10 +106,15 @@ export type ActivityIpcChannel =
 
 export interface PublicSettings {
   version: 1;
+  modelProvider: ModelProvider;
   endpoint: string;
   model: string;
+  vertexProject: string;
+  vertexLocation: string;
+  includeWindowImage: boolean;
   captureConsent: boolean;
   shortcut: string;
+  checkpointShortcut: string;
   retentionMinutes: number;
   excludedApps: string[];
   showBubble: boolean;
@@ -119,10 +125,15 @@ export interface PublicSettings {
 export type SettingsPatch = Partial<
   Pick<
     PublicSettings,
+    | "modelProvider"
     | "endpoint"
     | "model"
+    | "vertexProject"
+    | "vertexLocation"
+    | "includeWindowImage"
     | "captureConsent"
     | "shortcut"
+    | "checkpointShortcut"
     | "retentionMinutes"
     | "excludedApps"
     | "showBubble"
@@ -130,13 +141,46 @@ export type SettingsPatch = Partial<
   >
 >;
 
+export type ModelProvider = "openai-compatible" | "vertex-gcloud";
+
 export interface SaveSettingsInput {
   settings: SettingsPatch;
   apiKey?: string;
   clearApiKey?: boolean;
 }
 
-export type RecallTrigger = "bubble" | "hotkey" | "tray" | "return" | "panel";
+export type RecallTrigger =
+  | "bubble"
+  | "hotkey"
+  | "tray"
+  | "return"
+  | "panel"
+  | "saved";
+
+export interface CheckpointImage {
+  mimeType: "image/jpeg" | "image/png" | "image/webp";
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
+export interface ContextCheckpoint {
+  id: string;
+  createdAt: number;
+  event?: ActivityEvent;
+  evidence: ActivityEvent[];
+  explanation?: CausalExplanation;
+  reconstruction?: ModelReconstruction;
+  image?: CheckpointImage;
+}
+
+export interface CheckpointState {
+  status: "idle" | "saving" | "saved" | "error";
+  updatedAt: number;
+  count: number;
+  latest?: ContextCheckpoint;
+  message?: string;
+}
 
 export interface ModelReconstruction {
   summary: string;
@@ -152,6 +196,9 @@ export interface RecallState {
   current?: ActivityEvent;
   explanation?: CausalExplanation;
   reconstruction?: ModelReconstruction;
+  checkpoint?: ContextCheckpoint;
+  mode?: "recent" | "checkpoint";
+  contextImage?: CheckpointImage;
   updatedAt: number;
   message?: string;
 }
@@ -167,7 +214,9 @@ export interface DesktopBootstrap {
   settings: PublicSettings;
   stats: ActivityStats;
   recall: RecallState;
+  checkpoint: CheckpointState;
   shortcutRegistered: boolean;
+  checkpointShortcutRegistered: boolean;
   capturePermission:
     | "not-needed"
     | "not-determined"
@@ -188,11 +237,14 @@ export const DESKTOP_IPC = {
   openSettings: "here:desktop:settings:open",
   closeSettings: "here:desktop:settings:close",
   clearHistory: "here:desktop:history:clear",
+  clearCheckpoints: "here:desktop:checkpoint:clear",
+  remember: "here:desktop:checkpoint:remember",
   pauseCapture: "here:desktop:capture:pause",
   resumeCapture: "here:desktop:capture:resume",
   setBubbleExpanded: "here:desktop:bubble:expanded",
   recallChanged: "here:desktop:recall:changed",
   settingsChanged: "here:desktop:settings:changed",
+  checkpointChanged: "here:desktop:checkpoint:changed",
 } as const;
 
 export interface HereDesktopApi {
@@ -200,8 +252,11 @@ export interface HereDesktopApi {
   getSettings(): Promise<PublicSettings>;
   saveSettings(input: SaveSettingsInput): Promise<PublicSettings>;
   testConnection(input?: {
+    modelProvider: ModelProvider;
     endpoint: string;
     model: string;
+    vertexProject: string;
+    vertexLocation: string;
     apiKey?: string;
   }): Promise<ConnectionTestResult>;
   recall(trigger?: RecallTrigger): Promise<RecallState>;
@@ -210,10 +265,13 @@ export interface HereDesktopApi {
   openSettings(): Promise<void>;
   closeSettings(): Promise<void>;
   clearHistory(): Promise<void>;
+  clearCheckpoints(): Promise<CheckpointState>;
+  remember(): Promise<CheckpointState>;
   pauseCapture(): Promise<ActivityStats>;
   resumeCapture(): Promise<ActivityStats>;
   setBubbleExpanded(expanded: boolean): Promise<void>;
   onRecall(listener: (state: RecallState) => void): () => void;
   onSettings(listener: (settings: PublicSettings) => void): () => void;
+  onCheckpoint(listener: (state: CheckpointState) => void): () => void;
   onActivity(listener: (event: ActivityEvent) => void): () => void;
 }

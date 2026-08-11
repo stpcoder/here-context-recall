@@ -77,4 +77,33 @@ describe("SettingsStore", () => {
       ),
     ).toBe(true);
   });
+
+  it("loads version-one settings from before checkpoints and Vertex existed", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "here-settings-"));
+    const filePath = join(directory, "settings.json");
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        version: 1,
+        endpoint: "http://127.0.0.1:8000/v1",
+        model: "qwen",
+        captureConsent: true,
+        shortcut: "CommandOrControl+Shift+Space",
+        retentionMinutes: 10,
+        excludedApps: [],
+        showBubble: true,
+        autoStart: false,
+      }),
+      "utf8",
+    );
+    const settings = new SettingsStore({ filePath, safeStorage });
+    await expect(settings.initialize()).resolves.toMatchObject({
+      modelProvider: "openai-compatible",
+      checkpointShortcut: "CommandOrControl+Shift+M",
+      vertexProject: "",
+      vertexLocation: "global",
+      includeWindowImage: false,
+      captureConsent: true,
+    });
+  });
 });

@@ -47,6 +47,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: here-windows
+          retention-days: 14
           path: |
             release/**/*.exe
           if-no-files-found: error
@@ -76,6 +77,69 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: here-macos
+          retention-days: 14
           path: |
             release/**/*.dmg
           if-no-files-found: error
+
+  publish-latest:
+    name: Publish direct downloads
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - windows
+      - macos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: downloaded
+
+      - name: Prepare stable asset names
+        shell: bash
+        run: |
+          mkdir -p publish
+          find downloaded/here-windows -type f -name '*-Setup.exe' -exec cp '{}' publish/Here-Windows-x64-Setup.exe \;
+          find downloaded/here-windows -type f -name '*-Portable.exe' -exec cp '{}' publish/Here-Windows-x64-Portable.exe \;
+          find downloaded/here-macos -type f -name '*.dmg' -exec cp '{}' publish/Here-macOS-arm64.dmg \;
+          test -s publish/Here-Windows-x64-Setup.exe
+          test -s publish/Here-Windows-x64-Portable.exe
+          test -s publish/Here-macOS-arm64.dmg
+          cd publish
+          sha256sum Here-Windows-x64-Setup.exe Here-Windows-x64-Portable.exe Here-macOS-arm64.dmg > SHA256SUMS.txt
+
+      - name: Move rolling release tag
+        shell: bash
+        run: |
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/latest-build" >/dev/null 2>&1; then
+            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/latest-build" -f sha="${GITHUB_SHA}" -F force=true
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" -f ref='refs/tags/latest-build' -f sha="${GITHUB_SHA}"
+          fi
+
+      - name: Publish rolling GitHub Release
+        shell: bash
+        run: |
+          notes="Automated desktop build from main at ${GITHUB_SHA}. Download the installer for your operating system below."
+          if gh release view latest-build --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release edit latest-build --repo "${GITHUB_REPOSITORY}" --title 'Here — Latest automatic build' --notes "${notes}" --prerelease
+            gh release upload latest-build publish/* --repo "${GITHUB_REPOSITORY}" --clobber
+          else
+            gh release create latest-build publish/* --repo "${GITHUB_REPOSITORY}" --title 'Here — Latest automatic build' --notes "${notes}" --prerelease --latest=false
+          fi
+
+      - name: Add download links to the run summary
+        shell: bash
+        run: |
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/latest-build"
+          {
+            echo '## Download the latest Here build'
+            echo
+            echo "- [Windows installer](${base}/Here-Windows-x64-Setup.exe)"
+            echo "- [Windows portable](${base}/Here-Windows-x64-Portable.exe)"
+            echo "- [macOS DMG](${base}/Here-macOS-arm64.dmg)"
+            echo "- [SHA-256 checksums](${base}/SHA256SUMS.txt)"
+          } >> "${GITHUB_STEP_SUMMARY}"

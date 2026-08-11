@@ -10,12 +10,13 @@
 
 ## 해결
 
-Here는 사용자가 허용한 뒤 실제 포그라운드 창 전환을 최근 10분만 로컬 메모리에 보관합니다. `Ctrl+Shift+Space` 또는 플로팅 버블을 누르면 현재 창으로 이어진 3~5개의 근거 체인을 즉시 복원합니다.
+Here는 사용자가 허용한 뒤 실제 포그라운드 창 전환을 최근 10분만 로컬 메모리에 보관합니다. `Ctrl+Shift+Space` 또는 플로팅 버블을 누르면 현재 창으로 이어진 3~5개의 근거 체인을 즉시 복원합니다. 퇴근 직전 `Ctrl+Shift+M`을 누르면 그 지점만 암호화해 저장하고, 다음 날 첫 복원에서 그대로 돌아옵니다.
 
 - 현재 창으로 돌아온 사실과 시간 순서
 - 원래 창 → 방해 앱들 → 다시 현재 창의 근거 ID
 - 관측 범위를 넘지 않는 다음 행동 한 줄
-- 선택 시 사내 vLLM/OpenAI-compatible endpoint가 같은 근거를 자연어로 요약
+- 선택 시 사내 vLLM/OpenAI-compatible endpoint 또는 gcloud 기반 Vertex Gemini 3.5 Flash가 같은 근거를 자연어로 요약
+- 사용자가 켠 경우에만 복원 순간의 활성 창 한 장을 VLM 보조 맥락으로 사용
 
 핵심은 “기억해 주는 AI”가 아니라, **지금 열린 창에 온 이유를 한 번에 되찾는 인터페이스**입니다.
 
@@ -33,13 +34,13 @@ Here는 사용자가 허용한 뒤 실제 포그라운드 창 전환을 최근 1
 현재 A에서 `Ctrl+Shift+Space`를 누릅니다. Here 패널이 “A로 돌아왔고, 그 사이 B/브라우저로 전환됐다”는 결정적 chain과 각 시각을 보여줍니다. 
 “AI가 의도를 지어내지 않습니다. 이 순서가 근거입니다.”
 
-**55–72초**  
-설정에서 vLLM 또는 OpenAI-compatible endpoint를 보여주고, 동일한 evidence가 모델 요약으로도 정리됨을 보여줍니다. 연결이 없어도 로컬 체인은 즉시 보입니다.
+**55–70초**
+`Ctrl+Shift+M`으로 “여기 기억”을 실행합니다. 창 이미지를 켠 데모라면 Here 패널이 잠깐 숨고 원래 업무 창만 캡처됩니다. 체크포인트는 OS 암호화 저장이며 자동 타임라인 전체를 저장하지 않습니다.
 
-**72–85초**  
-버블의 pause를 누르고 다른 앱으로 전환합니다. 다시 resume 뒤 A로 돌아와, pause 기간은 관측하지 않았음을 확인합니다.
+**70–84초**
+Here를 재시작한 뒤 `Ctrl+Shift+Space`를 누릅니다. 최근 ring buffer가 비어 있어도 저장된 지점·근거·다음 행동이 즉시 나타납니다. 이어서 Vertex AI 설정의 `gemini-3.5-flash` 연결 상태를 보여줍니다.
 
-**85–90초**  
+**84–90초**
 “모든 업무를 감시하는 도구가 아닙니다. 지금 돌아온 창의 맥락만, 짧고 검증 가능하게. Here.”
 
 ## 신뢰 설계
@@ -47,10 +48,12 @@ Here는 사용자가 허용한 뒤 실제 포그라운드 창 전환을 최근 1
 | 구분 | Here의 실제 범위 |
 | --- | --- |
 | 캡처 | 활성 앱 이름, 창 제목, 프로세스, 창 경계, 전환 시각 |
-| 미수집 | 키·클릭·스크린샷·클립보드·파일 내용·셀 값·URL |
-| 저장 | 최근 10분 기본값의 프로세스 메모리. 종료/지우기 시 제거 |
+| 미수집 | 키·클릭·클립보드·파일 내용·셀 값·URL·상시 스크린샷 |
+| 이미지 | 기본 꺼짐. 사용자가 켜고 복원/기억을 직접 실행한 순간의 활성 창 한 장만 사용 |
+| 자동 저장 | 최근 10분 기본값의 프로세스 메모리. 종료/지우기 시 제거 |
+| 명시적 저장 | 선택된 근거와 선택적 이미지. OS 암호화, 최대 12개·7일 |
 | 제어 | 명시적 동의, pause/resume, 보존 시간, 앱 제외, 기록 지우기 |
-| 모델 | 선택 사항. 근거 ID 검증 후 요약하며 실패 시 로컬 체인 유지 |
+| 모델 | 선택 사항. Vertex Gemini VLM 또는 OAI/vLLM. 근거 ID 검증 후 요약하며 실패 시 로컬 체인 유지 |
 
 제목 캡처는 사용자가 앱 안에서 명시적으로 동의한 뒤에만 시작되며, 비밀번호 관리자는 기본 제외합니다. 사용자는 설정에서 민감 앱을 더 제외할 수 있습니다. Windows에서는 일반 포그라운드 창 metadata에 별도 OS 권한 팝업이 없으므로 앱 내 동의가 중요합니다. 관리자 권한 또는 보호된 창은 관측되지 않을 수 있습니다.
 
@@ -59,8 +62,10 @@ Here는 사용자가 허용한 뒤 실제 포그라운드 창 전환을 최근 1
 - Windows-first Electron 앱: 실제 foreground window reader, global shortcut, always-on-top bubble, tray
 - 결정적 causal engine: `A → non-A → A`가 관측된 경우에만 interruption/return 판정
 - Enterprise endpoint: OAI/vLLM의 `/models`, `/chat/completions`; API key는 OS 보호 저장소에 암호화
+- Vertex AI: `gcloud` ADC/로그인과 현재 project를 사용해 `gemini-3.5-flash:generateContent` 호출, 별도 API key 없음
+- Long-gap return: 사용자가 만든 체크포인트만 `safeStorage`로 전체 암호화하고 재시작 뒤 복원
 - 보안 경계: renderer에는 Node 권한·키·직접 네트워크 권한 없음
-- 배포: GitHub Actions Windows runner가 NSIS/portable `.exe`를 만들고 artifact로 업로드
+- 배포: `main` push마다 GitHub Actions가 Windows NSIS/portable와 macOS DMG를 빌드하고 고정 Release URL 갱신
 
 ## 제출용 문구
 
@@ -74,8 +79,8 @@ Here. — Why was I here?
 
 ### Description
 
-Here.는 interruption 뒤 현재 창으로 돌아왔을 때, 사용자가 허용한 최근 활성 창 전환만으로 “왜 여기지?”를 짧은 evidence chain으로 복원하는 Windows-first 데스크톱 유틸리티입니다. 사내 vLLM과 OpenAI-compatible API를 선택적으로 연결할 수 있으며, 파일 본문·화면·키 입력 없이 최소 metadata만 다룹니다.
+Here.는 interruption 뒤 현재 창으로 돌아왔을 때, 사용자가 허용한 최근 활성 창 전환만으로 “왜 여기지?”를 짧은 evidence chain으로 복원하는 Windows-first 데스크톱 유틸리티입니다. `Ctrl+Shift+M`으로 퇴근 전 지점을 암호화해 남기고 다음 날 돌아올 수 있습니다. gcloud 기반 Vertex Gemini VLM 또는 사내 vLLM을 선택적으로 연결하며, 백그라운드에서는 파일 본문·화면·키 입력 없이 최소 metadata만 다룹니다.
 
 ## 심사 시 정직하게 말할 한계
 
-창 제목만으로 사용자의 진짜 의도, 파일 내용, 다음 작업을 확정할 수는 없습니다. Here는 이를 추측하지 않고 관측된 전환 순서만 근거로 제시합니다. 클릭/키 입력/문서 본문/URL을 수집하지 않으므로 자동 문서 편집이나 셀 이동 기능은 이 제출 범위에 포함하지 않습니다.
+창 제목만으로 사용자의 진짜 의도, 파일 내용, 다음 작업을 확정할 수는 없습니다. Here는 관측된 전환과 사용자가 선택적으로 허용한 한 장의 이미지 범위만 제시합니다. 클릭/키 입력/문서 본문/URL을 수집하지 않으므로 자동 문서 편집이나 셀 이동 기능은 이 제출 범위에 포함하지 않습니다.

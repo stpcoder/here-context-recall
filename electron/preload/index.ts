@@ -18,11 +18,14 @@ const here: HereDesktopApi = {
   openSettings: () => ipcRenderer.invoke(DESKTOP_IPC.openSettings),
   closeSettings: () => ipcRenderer.invoke(DESKTOP_IPC.closeSettings),
   clearHistory: () => ipcRenderer.invoke(DESKTOP_IPC.clearHistory),
+  clearCheckpoints: () => ipcRenderer.invoke(DESKTOP_IPC.clearCheckpoints),
+  remember: () => ipcRenderer.invoke(DESKTOP_IPC.remember),
   pauseCapture: () => ipcRenderer.invoke(DESKTOP_IPC.pauseCapture),
   resumeCapture: () => ipcRenderer.invoke(DESKTOP_IPC.resumeCapture),
   setBubbleExpanded: (expanded) => ipcRenderer.invoke(DESKTOP_IPC.setBubbleExpanded, expanded),
   onRecall: (listener) => subscribe(DESKTOP_IPC.recallChanged, listener),
   onSettings: (listener) => subscribe(DESKTOP_IPC.settingsChanged, listener),
+  onCheckpoint: (listener) => subscribe(DESKTOP_IPC.checkpointChanged, listener),
   onActivity: (listener) => subscribe(ACTIVITY_IPC.event, listener),
 };
 

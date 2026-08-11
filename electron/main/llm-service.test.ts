@@ -127,4 +127,96 @@ describe("LlmService", () => {
     }).reconstruct(evidence);
     expect(result.source).toBe("fallback");
   });
+
+  it("uses gcloud auth and the configured Vertex Gemini model", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [{ content: { parts: [{ text: "HERE_OK" }] } }],
+        }),
+        { status: 200 },
+      ),
+    );
+    const service = new LlmService({
+      getConfiguration: () => ({
+        modelProvider: "vertex-gcloud",
+        endpoint: "http://127.0.0.1:8000/v1",
+        model: "gemini-3.5-flash",
+        vertexProject: "",
+        vertexLocation: "global",
+      }),
+      getVertexAccessToken: async () => "access-token",
+      getVertexProject: async () => "project-12345",
+      fetch,
+    });
+
+    await expect(service.testConnection()).resolves.toEqual({
+      ok: true,
+      models: ["gemini-3.5-flash"],
+    });
+    expect(fetch.mock.calls[0][0]).toBe(
+      "https://aiplatform.googleapis.com/v1/projects/project-12345/locations/global/publishers/google/models/gemini-3.5-flash:generateContent",
+    );
+    expect(fetch.mock.calls[0][1].headers).toMatchObject({
+      Authorization: "Bearer access-token",
+    });
+    expect(fetch.mock.calls[0][1].redirect).toBe("error");
+  });
+
+  it("sends an opt-in window image to Vertex and accepts only observed evidence IDs", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      summary: "질문에서 결과 파일로 이동한 흐름입니다.",
+                      target: "result.xlsx",
+                      evidenceIds: ["e1", "e2"],
+                      nextAction: "Sample A 값을 확인하세요.",
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      ),
+    );
+    const service = new LlmService({
+      getConfiguration: () => ({
+        modelProvider: "vertex-gcloud",
+        endpoint: "http://127.0.0.1:8000/v1",
+        model: "gemini-3.5-flash",
+        vertexProject: "project-12345",
+        vertexLocation: "global",
+      }),
+      getVertexAccessToken: async () => "access-token",
+      getVertexProject: async () => "unused-project",
+      fetch,
+    });
+
+    await expect(
+      service.reconstruct(evidence, undefined, undefined, {
+        mimeType: "image/png",
+        dataBase64: "aGVyZQ==",
+      }),
+    ).resolves.toMatchObject({
+      source: "model",
+      target: "result.xlsx",
+      evidenceIds: ["e1", "e2"],
+    });
+    const payload = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(payload.contents[0].parts[1]).toEqual({
+      inlineData: { mimeType: "image/png", data: "aGVyZQ==" },
+    });
+    expect(payload.generationConfig).toMatchObject({
+      responseMimeType: "application/json",
+      thinkingConfig: { thinkingBudget: 128 },
+    });
+  });
 });

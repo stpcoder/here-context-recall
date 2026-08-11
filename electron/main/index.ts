@@ -1,10 +1,12 @@
 import {
   app,
   BrowserWindow,
+  desktopCapturer,
   globalShortcut,
   ipcMain,
   Menu,
   nativeImage,
+  Notification,
   safeStorage,
   screen,
   session,
@@ -22,14 +24,22 @@ import {
   type WindowReader,
 } from "./activity-monitor";
 import { explainCausalChain } from "./causal-engine";
-import { LlmService, type Evidence } from "./llm-service";
+import { CheckpointStore } from "./checkpoint-store";
+import {
+  LlmService,
+  type Evidence,
+  type VisionContext,
+} from "./llm-service";
 import { SettingsStore, settingsPatchSchema } from "./settings-store";
 import {
   ACTIVITY_IPC,
   DESKTOP_IPC,
   type ActivityEvent,
   type ActivityStats,
+  type CheckpointImage,
+  type CheckpointState,
   type ConnectionTestResult,
+  type ContextCheckpoint,
   type DesktopBootstrap,
   type ModelReconstruction,
   type PublicSettings,
@@ -45,11 +55,18 @@ let settingsWindow: BrowserWindow | undefined;
 let tray: Tray | undefined;
 let monitor: ActivityMonitor | undefined;
 let store: SettingsStore;
+let checkpointStore: CheckpointStore;
 let llm: LlmService;
 let shortcutRegistered = false;
+let checkpointShortcutRegistered = false;
 let bubbleExpanded = false;
 let recallState: RecallState = { status: "idle", updatedAt: Date.now() };
 let recallNonce = 0;
+let checkpointState: CheckpointState = {
+  status: "idle",
+  updatedAt: Date.now(),
+  count: 0,
+};
 const execFileAsync = promisify(execFile);
 
 function setAutoStart(enabled: boolean): void {
@@ -119,10 +136,10 @@ function makeRecall(): BrowserWindow {
   if (recallWindow && !recallWindow.isDestroyed()) return recallWindow;
   recallWindow = createWindow(
     {
-      width: 760,
-      height: 660,
-      minWidth: 580,
-      minHeight: 470,
+      width: 820,
+      height: 700,
+      minWidth: 620,
+      minHeight: 520,
       frame: false,
       transparent: true,
       resizable: true,
@@ -147,10 +164,10 @@ function makeSettings(): BrowserWindow {
   if (settingsWindow && !settingsWindow.isDestroyed()) return settingsWindow;
   settingsWindow = createWindow(
     {
-      width: 540,
-      height: 710,
-      minWidth: 450,
-      minHeight: 560,
+      width: 600,
+      height: 820,
+      minWidth: 500,
+      minHeight: 640,
       frame: false,
       transparent: true,
       resizable: true,
@@ -290,13 +307,16 @@ function packagedMacWindowReader(): WindowReader | undefined {
   };
 }
 
-function registerShortcut(accelerator: string): boolean {
+function registerShortcuts(settings: PublicSettings): void {
   globalShortcut.unregisterAll();
   shortcutRegistered = globalShortcut.register(
-    accelerator,
+    settings.shortcut,
     () => void recall("hotkey"),
   );
-  return shortcutRegistered;
+  checkpointShortcutRegistered = globalShortcut.register(
+    settings.checkpointShortcut,
+    () => void remember(),
+  );
 }
 
 function stats(): ActivityStats {
@@ -326,6 +346,7 @@ function refreshTray(): void {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: "Why was I here?", click: () => void recall("tray") },
+      { label: "Remember here", click: () => void remember() },
       { type: "separator" },
       {
         label: running.paused ? "Resume capture" : "Pause capture",
@@ -386,20 +407,237 @@ function evidenceFromEvents(events: ActivityEvent[]): Evidence[] {
     }));
 }
 
+function checkpointForState(
+  checkpoint?: ContextCheckpoint,
+): ContextCheckpoint | undefined {
+  if (!checkpoint) return undefined;
+  return {
+    ...checkpoint,
+    evidence: [],
+    image: undefined,
+  };
+}
+
+function currentCheckpointState(
+  status: CheckpointState["status"] = checkpointState.status,
+  message = checkpointState.message,
+): CheckpointState {
+  return {
+    status,
+    updatedAt: Date.now(),
+    count: checkpointStore?.count() ?? 0,
+    latest: checkpointForState(checkpointStore?.latest()),
+    message,
+  };
+}
+
+function visionFromImage(image?: CheckpointImage): VisionContext | undefined {
+  if (!image) return undefined;
+  const comma = image.dataUrl.indexOf(",");
+  if (comma < 0) return undefined;
+  return {
+    mimeType: image.mimeType,
+    dataBase64: image.dataUrl.slice(comma + 1),
+  };
+}
+
+async function captureWindowImage(
+  event: ActivityEvent | undefined,
+  settings: PublicSettings,
+): Promise<CheckpointImage | undefined> {
+  if (!settings.captureConsent || !settings.includeWindowImage) return undefined;
+  const display = event?.bounds
+    ? screen.getDisplayMatching(event.bounds)
+    : screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  const displayBounds = display.bounds;
+  const requestedWidth = Math.max(640, Math.min(1_920, displayBounds.width));
+  const scale = requestedWidth / displayBounds.width;
+  const requestedHeight = Math.max(360, Math.round(displayBounds.height * scale));
+  const restoreBubble = Boolean(
+    bubbleWindow && !bubbleWindow.isDestroyed() && bubbleWindow.isVisible(),
+  );
+  const restoreRecall = Boolean(
+    recallWindow && !recallWindow.isDestroyed() && recallWindow.isVisible(),
+  );
+  const restoreSettings = Boolean(
+    settingsWindow && !settingsWindow.isDestroyed() && settingsWindow.isVisible(),
+  );
+  const recallWasFocused = Boolean(restoreRecall && recallWindow?.isFocused());
+  const settingsWasFocused = Boolean(
+    restoreSettings && settingsWindow?.isFocused(),
+  );
+  if (restoreBubble) bubbleWindow?.hide();
+  if (restoreRecall) recallWindow?.hide();
+  if (restoreSettings) settingsWindow?.hide();
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    const sources = await desktopCapturer.getSources({
+      types: ["screen"],
+      fetchWindowIcons: false,
+      thumbnailSize: { width: requestedWidth, height: requestedHeight },
+    });
+    const source =
+      sources.find((item) => item.display_id === String(display.id)) ?? sources[0];
+    if (!source || source.thumbnail.isEmpty()) return undefined;
+    const fullSize = source.thumbnail.getSize();
+    const bounds = event?.bounds ?? displayBounds;
+    const x = Math.max(
+      0,
+      Math.min(
+        fullSize.width - 1,
+        Math.round((bounds.x - displayBounds.x) * scale),
+      ),
+    );
+    const y = Math.max(
+      0,
+      Math.min(
+        fullSize.height - 1,
+        Math.round((bounds.y - displayBounds.y) * scale),
+      ),
+    );
+    const width = Math.max(
+      1,
+      Math.min(fullSize.width - x, Math.round(bounds.width * scale)),
+    );
+    const height = Math.max(
+      1,
+      Math.min(fullSize.height - y, Math.round(bounds.height * scale)),
+    );
+    let image = source.thumbnail.crop({ x, y, width, height });
+    if (image.isEmpty()) return undefined;
+    const croppedSize = image.getSize();
+    if (croppedSize.width > 1_280)
+      image = image.resize({ width: 1_280, quality: "good" });
+    const size = image.getSize();
+    const data = image.toJPEG(72);
+    if (!data.length || data.length > 5_000_000) return undefined;
+    return {
+      mimeType: "image/jpeg",
+      dataUrl: `data:image/jpeg;base64,${data.toString("base64")}`,
+      width: size.width,
+      height: size.height,
+    };
+  } catch {
+    return undefined;
+  } finally {
+    if (restoreBubble && settings.showBubble) bubbleWindow?.showInactive();
+    if (restoreRecall) {
+      recallWindow?.show();
+      if (recallWasFocused) recallWindow?.focus();
+    }
+    if (restoreSettings) {
+      settingsWindow?.show();
+      if (settingsWasFocused) settingsWindow?.focus();
+    }
+  }
+}
+
+async function remember(): Promise<CheckpointState> {
+  checkpointState = currentCheckpointState("saving");
+  sendAll(DESKTOP_IPC.checkpointChanged, checkpointState);
+  try {
+    const settings = await store.getPublic();
+    if (!settings.captureConsent)
+      throw new Error("먼저 창 흐름 기록을 허용해 주세요.");
+    const current = monitor?.current();
+    if (!current) throw new Error("아직 기억할 활성 창이 없습니다.");
+    const recent = monitor?.recent() ?? [];
+    const explanation = explainCausalChain({ current, events: recent });
+    const selectedIds = new Set([...explanation.evidenceIds, current.id]);
+    const evidence = recent
+      .filter((event) => selectedIds.has(event.id))
+      .slice(-12);
+    if (!evidence.some((event) => event.id === current.id)) evidence.push(current);
+    const image = await captureWindowImage(current, settings);
+    const fallback = explanationFallback(explanation, current);
+    const checkpoint = await checkpointStore.save({
+      event: current,
+      evidence,
+      explanation,
+      reconstruction: fallback,
+      image,
+    });
+    checkpointState = currentCheckpointState("saved", "여기까지 기억해뒀어요.");
+    sendAll(DESKTOP_IPC.checkpointChanged, checkpointState);
+    if (settings.showBubble) {
+      makeBubble();
+      positionBubble(current);
+      bubbleWindow?.showInactive();
+    } else if (Notification.isSupported()) {
+      new Notification({
+        title: "Here",
+        body: "여기까지 기억해뒀어요.",
+        silent: true,
+      }).show();
+    }
+    const modelEvidence = evidenceFromEvents(evidence);
+    void llm
+      .reconstruct(
+        modelEvidence,
+        { id: current.id, app: current.appName, title: current.title },
+        () => fallback,
+        visionFromImage(image),
+      )
+      .then(async (reconstruction) => {
+        const updated = await checkpointStore.setReconstruction(
+          checkpoint.id,
+          reconstruction,
+        );
+        if (!updated) return;
+        checkpointState = currentCheckpointState(
+          "saved",
+          "AI가 이어갈 지점까지 정리했어요.",
+        );
+        sendAll(DESKTOP_IPC.checkpointChanged, checkpointState);
+      })
+      .catch(() => {
+        // The encrypted local checkpoint is already complete. Model enrichment
+        // is deliberately best-effort and must never undo the remembered state.
+      });
+  } catch (error) {
+    checkpointState = currentCheckpointState(
+      "error",
+      error instanceof Error ? error.message : "기억하지 못했어요.",
+    );
+    sendAll(DESKTOP_IPC.checkpointChanged, checkpointState);
+  }
+  return checkpointState;
+}
+
 async function recall(trigger: RecallTrigger = "panel"): Promise<RecallState> {
-  const current = monitor?.current();
-  const events = monitor?.recent() ?? [];
-  const explanation = explainCausalChain({ current, events });
+  const settings = await store.getPublic();
+  const recentCurrent = monitor?.current();
+  const recentEvents = monitor?.recent() ?? [];
+  const checkpoint = checkpointStore.latest();
+  const focusCount = recentEvents.filter(
+    (event) => event.kind === "window-focus",
+  ).length;
+  const useCheckpoint = Boolean(
+    checkpoint && (trigger === "saved" || focusCount < 2),
+  );
+  const current = useCheckpoint ? checkpoint?.event : recentCurrent;
+  const events = useCheckpoint ? checkpoint?.evidence ?? [] : recentEvents;
+  const explanation =
+    (useCheckpoint ? checkpoint?.explanation : undefined) ??
+    explainCausalChain({ current, events });
+  const image = useCheckpoint
+    ? checkpoint?.image
+    : await captureWindowImage(current, settings);
   const nonce = ++recallNonce;
   // The first paint is deterministic and local. Network/model work is optional
   // enrichment, never a reason to make the shortcut wait.
-  const fallback = explanationFallback(explanation, current);
+  const fallback =
+    (useCheckpoint ? checkpoint?.reconstruction : undefined) ??
+    explanationFallback(explanation, current);
   recallState = {
     status: "ready",
     trigger,
     current,
     explanation,
     reconstruction: fallback,
+    checkpoint,
+    mode: useCheckpoint ? "checkpoint" : "recent",
+    contextImage: image,
     updatedAt: Date.now(),
   };
   sendAll(DESKTOP_IPC.recallChanged, recallState);
@@ -409,7 +647,10 @@ async function recall(trigger: RecallTrigger = "panel"): Promise<RecallState> {
   window.focus();
 
   const immediate = recallState;
-  const evidenceIds = new Set(explanation.evidenceIds);
+  const evidenceIds = new Set([
+    ...explanation.evidenceIds,
+    ...(current ? [current.id] : []),
+  ]);
   const evidence = evidenceFromEvents(
     events.filter((event) => evidenceIds.has(event.id)),
   );
@@ -424,6 +665,7 @@ async function recall(trigger: RecallTrigger = "panel"): Promise<RecallState> {
           }
         : undefined,
       () => fallback,
+      visionFromImage(image),
     )
     .then((reconstruction) => {
       if (nonce !== recallNonce) return;
@@ -434,6 +676,13 @@ async function recall(trigger: RecallTrigger = "panel"): Promise<RecallState> {
         updatedAt: Date.now(),
       };
       sendAll(DESKTOP_IPC.recallChanged, recallState);
+      if (useCheckpoint && checkpoint)
+        void checkpointStore
+          .setReconstruction(checkpoint.id, reconstruction)
+          .catch(() => undefined);
+    })
+    .catch(() => {
+      // Recall was already rendered from observed local evidence.
     });
   return immediate;
 }
@@ -464,7 +713,9 @@ function registerIpc(): void {
       settings: await store.getPublic(),
       stats: stats(),
       recall: recallState,
+      checkpoint: currentCheckpointState(),
       shortcutRegistered,
+      checkpointShortcutRegistered,
       capturePermission: await macPermission(),
     }),
   );
@@ -478,7 +729,11 @@ function registerIpc(): void {
       let next = await store.update(patch);
       if (parsed.clearApiKey) next = await store.clearApiKey();
       if (parsed.apiKey?.trim()) next = await store.setApiKey(parsed.apiKey);
-      if (next.shortcut !== previous.shortcut) registerShortcut(next.shortcut);
+      if (
+        next.shortcut !== previous.shortcut ||
+        next.checkpointShortcut !== previous.checkpointShortcut
+      )
+        registerShortcuts(next);
       if (next.autoStart !== previous.autoStart) setAutoStart(next.autoStart);
       const capturePolicyChanged =
         next.captureConsent !== previous.captureConsent ||
@@ -502,7 +757,14 @@ function registerIpc(): void {
     DESKTOP_IPC.testConnection,
     async (
       _event,
-      input?: { endpoint: string; model: string; apiKey?: string },
+      input?: {
+        modelProvider: PublicSettings["modelProvider"];
+        endpoint: string;
+        model: string;
+        vertexProject: string;
+        vertexLocation: string;
+        apiKey?: string;
+      },
     ): Promise<ConnectionTestResult> => {
       if (!input) return llm.testConnection();
       const parsed = connectionInputSchema.parse(input);
@@ -526,6 +788,13 @@ function registerIpc(): void {
   ipcMain.handle(DESKTOP_IPC.clearHistory, () => {
     monitor?.clear();
   });
+  ipcMain.handle(DESKTOP_IPC.clearCheckpoints, async () => {
+    await checkpointStore.clear();
+    checkpointState = currentCheckpointState("idle", "저장된 맥락을 지웠어요.");
+    sendAll(DESKTOP_IPC.checkpointChanged, checkpointState);
+    return checkpointState;
+  });
+  ipcMain.handle(DESKTOP_IPC.remember, remember);
   ipcMain.handle(DESKTOP_IPC.pauseCapture, pauseCapture);
   ipcMain.handle(DESKTOP_IPC.resumeCapture, resumeCapture);
   ipcMain.handle(DESKTOP_IPC.setBubbleExpanded, (_event, expanded: unknown) => {
@@ -543,8 +812,11 @@ const saveInputSchema = z
   .strict();
 const connectionInputSchema = z
   .object({
+    modelProvider: z.enum(["openai-compatible", "vertex-gcloud"]),
     endpoint: z.string().trim().max(2_048),
     model: z.string().trim().max(300),
+    vertexProject: z.string().trim().max(300),
+    vertexLocation: z.string().trim().max(100),
     apiKey: z.string().max(8_192).optional(),
   })
   .strict();
@@ -554,6 +826,7 @@ const recallTriggerSchema = z.enum([
   "tray",
   "return",
   "panel",
+  "saved",
 ]);
 
 async function bootstrap(): Promise<void> {
@@ -563,12 +836,24 @@ async function bootstrap(): Promise<void> {
     clearHistory: () => monitor?.clear(),
   });
   const settings = await store.initialize();
+  checkpointStore = new CheckpointStore({
+    filePath: join(app.getPath("userData"), "checkpoints.bin"),
+    safeStorage,
+  });
+  await checkpointStore.initialize();
+  checkpointState = currentCheckpointState("idle");
   llm = new LlmService({
-    getConfiguration: async () => ({
-      endpoint: (await store.getPublic()).endpoint,
-      model: (await store.getPublic()).model,
-      apiKey: await store.getApiKey(),
-    }),
+    getConfiguration: async () => {
+      const current = await store.getPublic();
+      return {
+        modelProvider: current.modelProvider,
+        endpoint: current.endpoint,
+        model: current.model,
+        vertexProject: current.vertexProject,
+        vertexLocation: current.vertexLocation,
+        apiKey: await store.getApiKey(),
+      };
+    },
   });
   session.defaultSession.setPermissionRequestHandler(
     (_webContents, _permission, callback) => callback(false),
@@ -591,7 +876,7 @@ async function bootstrap(): Promise<void> {
   tray = new Tray(icon());
   tray.setToolTip("Here — Why was I here?");
   tray.on("click", () => void recall("tray"));
-  registerShortcut(settings.shortcut);
+  registerShortcuts(settings);
   if (settings.autoStart) setAutoStart(true);
   await applyCapture(settings);
   if (!settings.captureConsent) await openSettings();
