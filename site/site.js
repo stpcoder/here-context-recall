@@ -29,3 +29,15 @@ const observer = new IntersectionObserver(
   { threshold: 0.12, rootMargin: "0px 0px -6%" },
 );
 document.querySelectorAll(".reveal").forEach((element) => observer.observe(element));
+
+const contextDemo = document.querySelector("[data-context-demo]");
+const replayButtons = document.querySelectorAll("[data-replay]");
+
+const replayDemo = () => {
+  if (!contextDemo) return;
+  contextDemo.classList.remove("is-playing");
+  void contextDemo.offsetWidth;
+  contextDemo.classList.add("is-playing");
+};
+
+replayButtons.forEach((button) => button.addEventListener("click", replayDemo));
