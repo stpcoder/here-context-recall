@@ -161,6 +161,26 @@ describe("ActivityMonitor", () => {
     monitor.stop();
   });
 
+  it("never reuses a stale current window when a user-triggered snapshot fails", async () => {
+    vi.useFakeTimers();
+    let active: WindowSample | undefined = sample(1, "Excel", "Q3.xlsx");
+    const reader = { activeWindow: vi.fn(async () => active) };
+    const monitor = new ActivityMonitor(
+      { platform: "win32", pollIntervalMs: 500, hereProcessId: 999 },
+      reader,
+    );
+    await monitor.start();
+    expect(monitor.current()?.title).toBe("Q3.xlsx");
+    active = undefined;
+    await expect(monitor.snapshot()).resolves.toBeUndefined();
+    expect(monitor.current()).toBeUndefined();
+    expect(monitor.recent().at(-1)).toMatchObject({
+      kind: "capture-gap",
+      gapReason: "unavailable",
+    });
+    monitor.stop();
+  });
+
   it("recovers after a reader gap and keeps the ring buffer strictly bounded", async () => {
     vi.useFakeTimers();
     let active: WindowSample | undefined;
