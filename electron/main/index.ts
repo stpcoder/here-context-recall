@@ -400,7 +400,7 @@ function explanationFallback(
 ): ModelReconstruction {
   const target = current?.title ?? current?.appName ?? "현재 창";
   return {
-    summary: explanation?.answer ?? "최근 활동이 아직 충분하지 않습니다.",
+    summary: explanation?.answer ?? "최근에 사용한 창이 아직 충분하지 않습니다.",
     target,
     evidenceIds: explanation?.evidenceIds ?? [],
     nextAction: explanation?.nextAction,
@@ -544,9 +544,9 @@ async function remember(): Promise<CheckpointState> {
   try {
     const settings = await store.getPublic();
     if (!settings.captureConsent)
-      throw new Error("먼저 창 흐름 기록을 허용해 주세요.");
+      throw new Error("먼저 ‘최근 사용한 창 기록’을 켜 주세요.");
     const current = await monitor?.snapshot();
-    if (!current) throw new Error("아직 기억할 활성 창이 없습니다.");
+    if (!current) throw new Error("저장할 수 있는 현재 창이 없습니다.");
     const recent = monitor?.recent() ?? [];
     const explanation = explainCausalChain({ current, events: recent });
     const selectedIds = new Set([...explanation.evidenceIds, current.id]);
@@ -563,7 +563,7 @@ async function remember(): Promise<CheckpointState> {
       reconstruction: fallback,
       image,
     });
-    checkpointState = currentCheckpointState("saved", "여기까지 기억해뒀어요.");
+    checkpointState = currentCheckpointState("saved", "이 작업을 저장했어요.");
     sendAll(DESKTOP_IPC.checkpointChanged, checkpointState);
     if (settings.showBubble) {
       makeBubble();
@@ -572,7 +572,7 @@ async function remember(): Promise<CheckpointState> {
     } else if (Notification.isSupported()) {
       new Notification({
         title: "Here",
-        body: "여기까지 기억해뒀어요.",
+        body: "이 작업을 저장했어요.",
         silent: true,
       }).show();
     }
@@ -592,7 +592,7 @@ async function remember(): Promise<CheckpointState> {
         if (!updated) return;
         checkpointState = currentCheckpointState(
           "saved",
-          "AI가 이어갈 지점까지 정리했어요.",
+          "AI가 다음 할 일까지 정리했어요.",
         );
         sendAll(DESKTOP_IPC.checkpointChanged, checkpointState);
       })
@@ -603,7 +603,7 @@ async function remember(): Promise<CheckpointState> {
   } catch (error) {
     checkpointState = currentCheckpointState(
       "error",
-      error instanceof Error ? error.message : "기억하지 못했어요.",
+      error instanceof Error ? error.message : "작업을 저장하지 못했어요.",
     );
     sendAll(DESKTOP_IPC.checkpointChanged, checkpointState);
   }
@@ -811,7 +811,7 @@ function registerIpc(): void {
   });
   ipcMain.handle(DESKTOP_IPC.clearCheckpoints, async () => {
     await checkpointStore.clear();
-    checkpointState = currentCheckpointState("idle", "저장된 맥락을 지웠어요.");
+    checkpointState = currentCheckpointState("idle", "저장한 작업을 모두 지웠어요.");
     sendAll(DESKTOP_IPC.checkpointChanged, checkpointState);
     return checkpointState;
   });

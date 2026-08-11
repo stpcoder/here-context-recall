@@ -146,15 +146,15 @@ function Bubble() {
   };
   const label =
     checkpoint?.status === "saving"
-      ? "기억하는 중"
+      ? "작업 저장 중"
       : flash
-        ? "나중에 이어둘게요"
-        : "Why am I here?";
+        ? "작업을 저장했어요"
+        : "왜 이 창을 열었지?";
 
   return (
     <motion.button
       className={`bubble ${expanded || flash ? "is-expanded" : ""} ${flash ? "is-saved" : ""}`}
-      aria-label="Why am I here? 최근 업무 흐름 보기"
+      aria-label="왜 이 창을 열었는지 확인"
       onMouseEnter={() => change(true)}
       onMouseLeave={() => change(false)}
       onFocus={() => change(true)}
@@ -165,7 +165,7 @@ function Bubble() {
     >
       <Mark compact />
       <span className="bubble-copy">{label}</span>
-      {stats?.paused && <span className="bubble-paused">paused</span>}
+      {stats?.paused && <span className="bubble-paused">일시 정지</span>}
     </motion.button>
   );
 }
@@ -217,10 +217,10 @@ function JourneyTimeline({ state }: { state: RecallState }) {
   const away = journey.filter((item) => item.phase === "away");
   const current = journey.filter((item) => item.phase === "now");
   return (
-    <section className="journey-card" aria-label="현재 작업에 도착하기까지의 흐름">
-      <JourneyGroup label="열기까지" items={before} />
-      <JourneyGroup label="자리를 비운 동안" items={away} />
-      <JourneyGroup label={state.mode === "checkpoint" ? "저장한 위치" : "현재"} items={current} />
+    <section className="journey-card" aria-label="현재 창을 열기 전 사용한 앱과 창">
+      <JourneyGroup label="이 창을 열기 전" items={before} />
+      <JourneyGroup label="중간에 본 창" items={away} />
+      <JourneyGroup label={state.mode === "checkpoint" ? "저장한 작업" : "지금"} items={current} />
     </section>
   );
 }
@@ -237,16 +237,16 @@ function ContinueCard({
   remembering: boolean;
 }) {
   const currentTitle = titleLabel(state.current) || "현재 창";
-  const nextAction = state.reconstruction?.nextAction || state.explanation?.nextAction || "현재 창에서 계속 확인하기";
+  const nextAction = state.reconstruction?.nextAction || state.explanation?.nextAction || "현재 창에서 계속하기";
   const image = state.contextImage;
   const returnLabel = state.mode === "checkpoint"
     ? "Here 닫기"
     : `${shortAppLabel(state.current)}로 돌아가기`;
   return (
-    <section className="continue-card" aria-label="현재 창과 이어서 할 일">
+    <section className="continue-card" aria-label="현재 창과 지금 할 일">
       <div className={`window-preview ${image ? "has-image" : ""}`}>
         {image ? (
-          <img src={image.dataUrl} alt="사용자가 복원 순간에 허용한 현재 창 미리보기" />
+          <img src={image.dataUrl} alt="사용자가 하던 일 찾기를 누를 때 허용한 현재 창 이미지" />
         ) : (
           <div className="window-placeholder"><WindowIcon app={appLabel(state.current)} /><i /><i /><i /></div>
         )}
@@ -256,7 +256,7 @@ function ContinueCard({
         </div>
       </div>
       <div className="next-action-card">
-        <span>다음</span>
+        <span>지금 할 일</span>
         <strong>{nextAction}</strong>
       </div>
       <button className="primary-action continue-action" onClick={onResume}>
@@ -265,7 +265,7 @@ function ContinueCard({
       {state.mode !== "checkpoint" && (
         <button className="remember-later-action" onClick={onRemember} disabled={remembering}>
           {remembering ? <LoaderCircle className="spinner" size={15} /> : <Bookmark size={15} />}
-          {remembering ? "저장 중" : "나중에 이어보기"}
+          {remembering ? "저장 중" : "이 작업 저장"}
         </button>
       )}
     </section>
@@ -276,11 +276,11 @@ function EmptyState({ onRemember, onSettings }: { onRemember: () => void; onSett
   return (
     <div className="empty-state">
       <div className="empty-orbit"><Mark /></div>
-      <h1>이 작업을 나중에 이어볼까요?</h1>
-      <p className="muted">현재 작업 위치만 안전하게 저장합니다.</p>
+      <h1>이 작업을 저장할까요?</h1>
+      <p className="muted">현재 창과 다음 할 일을 저장합니다.</p>
       <div className="empty-actions">
         <button className="primary-action" onClick={onRemember}>
-          <Bookmark size={16} /> 나중에 이어보기
+          <Bookmark size={16} /> 작업 저장
         </button>
         <button className="text-action" onClick={onSettings}>
           설정 <ChevronRight size={14} />
@@ -333,7 +333,7 @@ function RecallPanel() {
         {state?.status === "loading" ? (
           <motion.section key="loading" className="recall-loading" initial={showcase ? false : { opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <LoaderCircle className="spinner" size={20} />
-            <p>흐름을 다시 잇는 중</p>
+            <p>하던 일을 찾는 중</p>
           </motion.section>
         ) : !hasContext ? (
           <motion.section key="empty" initial={showcase ? false : { opacity: 0 }} animate={{ opacity: 1 }}>
@@ -470,7 +470,7 @@ function SettingsPanel() {
   const test = async () => {
     if (!settings) return;
     setTesting(true);
-    setNotice(settings.modelProvider === "vertex-gcloud" ? "로컬 QA 모델 호출 중…" : "선택한 업무 모델 호출 중…");
+    setNotice(settings.modelProvider === "vertex-gcloud" ? "Vertex 연결 확인 중…" : "사내 AI 연결 확인 중…");
     try {
       const result = await api.testConnection({
         modelProvider: settings.modelProvider,
@@ -492,22 +492,22 @@ function SettingsPanel() {
                 : undefined;
         const vision = result.visionRequested
           ? result.visionVerified
-            ? "VLM 이미지 확인"
-            : "text-only 자동 전환"
+            ? "이미지 입력 확인"
+            : "이미지는 제외하고 연결됨"
           : undefined;
         setNotice(
           [
-            "연결됨",
-            mode,
+            "연결 완료",
+            mode ? "응답 형식 확인" : undefined,
             vision,
             result.latencyMs !== undefined ? `${result.latencyMs}ms` : undefined,
-            "저장 필요",
+            "저장을 눌러 적용",
           ]
             .filter(Boolean)
             .join(" · "),
         );
       } else
-        setNotice(result.error || "Here 복원 형식을 확인하지 못했어요");
+        setNotice(result.error || "Here에서 사용할 수 있는 응답인지 확인하지 못했어요");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "연결하지 못했어요");
     } finally {
@@ -525,7 +525,7 @@ function SettingsPanel() {
   const clearContext = async () => {
     await api.clearHistory();
     await api.clearCheckpoints();
-    setNotice("최근 흐름과 저장된 맥락을 지웠어요");
+    setNotice("최근 창 기록과 저장한 작업을 모두 지웠어요");
   };
 
   if (!settings)
@@ -542,60 +542,60 @@ function SettingsPanel() {
 
       <div className="settings-scroll">
         <section className="setting-section recording-section">
-          <div className="section-title"><span>기록</span><small>기기 안에서만</small></div>
+          <div className="section-title"><span>최근 작업</span><small>내 PC에만 저장</small></div>
           <div className="settings-card">
-            <Toggle checked={settings.captureConsent} onChange={(value) => update("captureConsent", value)} label="창 흐름 기록" detail={`최근 ${settings.retentionMinutes}분 · 앱과 창 제목`} />
-            <Toggle checked={settings.includeWindowImage} onChange={(value) => update("includeWindowImage", value)} label="현재 창 미리보기" detail="복원·기억을 누른 순간에만 1장" />
+            <Toggle checked={settings.captureConsent} onChange={(value) => update("captureConsent", value)} label="최근 사용한 창 기록" detail={`최근 ${settings.retentionMinutes}분 · 앱과 창 제목`} />
+            <Toggle checked={settings.includeWindowImage} onChange={(value) => update("includeWindowImage", value)} label="현재 창 이미지 사용" detail="하던 일 찾기·작업 저장을 누를 때만 1장" />
           </div>
         </section>
 
         <section className="setting-section model-section">
-          <div className="section-title"><span>모델</span><small>OpenAI-compatible</small></div>
+          <div className="section-title"><span>AI 연결</span><small>OpenAI API 호환</small></div>
           <div className="provider-grid">
-            <ProviderChoice value="openai-compatible" active={!isVertex} icon={<Server size={16} />} label="Work AI" detail="사내 vLLM" onClick={chooseProvider} />
-            <ProviderChoice value="vertex-gcloud" active={isVertex} icon={<Cloud size={16} />} label="Vertex QA" detail="Mac QA" onClick={chooseProvider} />
+            <ProviderChoice value="openai-compatible" active={!isVertex} icon={<Server size={16} />} label="사내 AI" detail="vLLM · OpenAI API 호환" onClick={chooseProvider} />
+            <ProviderChoice value="vertex-gcloud" active={isVertex} icon={<Cloud size={16} />} label="Vertex 테스트" detail="Mac 개발용" onClick={chooseProvider} />
           </div>
 
           {isVertex ? (
             <div className="provider-fields" key="vertex-fields">
-              <label className="field"><span>Google Cloud project <em>gcloud</em></span><input aria-label="Google Cloud project" value={settings.vertexProject} onChange={(event) => update("vertexProject", event.target.value)} placeholder="현재 project 사용" /></label>
+              <label className="field"><span>Google Cloud 프로젝트 <em>gcloud</em></span><input aria-label="Google Cloud 프로젝트" value={settings.vertexProject} onChange={(event) => update("vertexProject", event.target.value)} placeholder="현재 프로젝트 사용" /></label>
               <div className="field-pair">
-                <label className="field"><span>Location</span><input aria-label="Vertex location" value={settings.vertexLocation} onChange={(event) => update("vertexLocation", event.target.value)} placeholder="global" /></label>
-                <label className="field"><span>Model</span><input aria-label="Vertex model" value={settings.model} onChange={(event) => update("model", event.target.value)} placeholder="gemini-3.5-flash" /></label>
+                <label className="field"><span>리전</span><input aria-label="Vertex 리전" value={settings.vertexLocation} onChange={(event) => update("vertexLocation", event.target.value)} placeholder="global" /></label>
+                <label className="field"><span>모델 이름</span><input aria-label="Vertex 모델 이름" value={settings.model} onChange={(event) => update("model", event.target.value)} placeholder="gemini-3.5-flash" /></label>
               </div>
             </div>
           ) : (
             <div className="provider-fields" key="openai-fields">
-              <label className="field"><span>Base URL <em>/v1</em></span><input aria-label="OpenAI-compatible Base URL" value={settings.endpoint} onChange={(event) => update("endpoint", event.target.value)} placeholder="https://llm.company.internal/v1" /></label>
-              <label className="field"><span>Model ID</span><input aria-label="OpenAI-compatible Model ID" value={settings.model} onChange={(event) => update("model", event.target.value)} placeholder="Qwen/Qwen2.5-72B-Instruct" /></label>
-              <label className="field"><span>Bearer token <em>{settings.apiKeyConfigured ? "저장됨" : "선택"}</em></span><div className="key-input"><input aria-label="Bearer token" type={showKey ? "text" : "password"} value={key} onChange={(event) => { setNotice(undefined); setKey(event.target.value); }} placeholder={settings.apiKeyConfigured ? "새 token으로 교체" : "로컬 무인증은 비워두기"} autoComplete="new-password" spellCheck={false} /><button onClick={() => setShowKey(!showKey)} aria-label={showKey ? "token 숨기기" : "token 보기"}>{showKey ? <EyeOff size={16} /> : <Eye size={16} />}</button></div></label>
+              <label className="field"><span>API 주소 <em>/v1</em></span><input aria-label="OpenAI API 호환 주소" value={settings.endpoint} onChange={(event) => update("endpoint", event.target.value)} placeholder="https://llm.company.internal/v1" /></label>
+              <label className="field"><span>모델 이름</span><input aria-label="OpenAI API 호환 모델 이름" value={settings.model} onChange={(event) => update("model", event.target.value)} placeholder="Qwen/Qwen2.5-72B-Instruct" /></label>
+              <label className="field"><span>접근 토큰 <em>{settings.apiKeyConfigured ? "저장됨" : "선택"}</em></span><div className="key-input"><input aria-label="접근 토큰" type={showKey ? "text" : "password"} value={key} onChange={(event) => { setNotice(undefined); setKey(event.target.value); }} placeholder={settings.apiKeyConfigured ? "새 토큰으로 교체" : "인증이 없으면 비워두기"} autoComplete="new-password" spellCheck={false} /><button onClick={() => setShowKey(!showKey)} aria-label={showKey ? "토큰 숨기기" : "토큰 보기"}>{showKey ? <EyeOff size={16} /> : <Eye size={16} />}</button></div></label>
             </div>
           )}
           <div className="inline-actions">
-            <button className="test-button" disabled={testing} onClick={() => void test()}>{testing ? <LoaderCircle className="spinner" size={14} /> : <Zap size={14} />} {isVertex ? "QA 테스트" : settings.includeWindowImage ? "VLM 연결 테스트" : "연결 테스트"}</button>
-            {!isVertex && settings.apiKeyConfigured && <button className="test-button muted-action" onClick={() => void removeKey()}>token 지우기</button>}
+            <button className="test-button" disabled={testing} onClick={() => void test()}>{testing ? <LoaderCircle className="spinner" size={14} /> : <Zap size={14} />} {isVertex ? "Vertex 연결 확인" : settings.includeWindowImage ? "이미지 포함 연결 확인" : "연결 확인"}</button>
+            {!isVertex && settings.apiKeyConfigured && <button className="test-button muted-action" onClick={() => void removeKey()}>저장된 토큰 삭제</button>}
           </div>
         </section>
 
         <section className="setting-section shortcut-section">
-          <div className="section-title"><span>단축키</span><small>전역</small></div>
+          <div className="section-title"><span>단축키</span><small>다른 앱에서도 사용</small></div>
           <div className="settings-card shortcut-list">
-            <div className="shortcut-card"><span><Clock3 size={15} /><b>복원</b></span><kbd>{desktop?.platform === "darwin" ? "⌘ ⇧ Space" : "Ctrl ⇧ Space"}</kbd>{desktop && !desktop.shortcutRegistered && <em>충돌</em>}</div>
-            <div className="shortcut-card"><span><Bookmark size={15} /><b>나중에 이어보기</b></span><kbd>{desktop?.platform === "darwin" ? "⌘ ⇧ M" : "Ctrl ⇧ M"}</kbd>{desktop && !desktop.checkpointShortcutRegistered && <em>충돌</em>}</div>
+            <div className="shortcut-card"><span><Clock3 size={15} /><b>하던 일 찾기</b></span><kbd>{desktop?.platform === "darwin" ? "⌘ ⇧ Space" : "Ctrl ⇧ Space"}</kbd>{desktop && !desktop.shortcutRegistered && <em>사용 중</em>}</div>
+            <div className="shortcut-card"><span><Bookmark size={15} /><b>작업 저장</b></span><kbd>{desktop?.platform === "darwin" ? "⌘ ⇧ M" : "Ctrl ⇧ M"}</kbd>{desktop && !desktop.checkpointShortcutRegistered && <em>사용 중</em>}</div>
           </div>
         </section>
 
         <section className="setting-section compact-settings">
-          <div className="section-title"><span>앱</span><small>백그라운드</small></div>
+          <div className="section-title"><span>실행 설정</span><small>Here 동작</small></div>
           <div className="field-pair">
-            <label className="field"><span>보관 시간</span><select value={settings.retentionMinutes} onChange={(event) => update("retentionMinutes", Number(event.target.value))}><option value={5}>5분</option><option value={10}>10분</option><option value={15}>15분</option><option value={30}>30분</option></select></label>
-            <label className="field"><span>제외 앱</span><input value={exclude} onChange={(event) => setExclude(event.target.value)} placeholder="1Password, Bitwarden" /></label>
+            <label className="field"><span>최근 창 기록 보관</span><select value={settings.retentionMinutes} onChange={(event) => update("retentionMinutes", Number(event.target.value))}><option value={5}>5분</option><option value={10}>10분</option><option value={15}>15분</option><option value={30}>30분</option></select></label>
+            <label className="field"><span>기록하지 않을 앱</span><input value={exclude} onChange={(event) => setExclude(event.target.value)} placeholder="1Password, Bitwarden" /></label>
           </div>
           <div className="settings-card app-toggles">
-            <Toggle checked={settings.showBubble} onChange={(value) => update("showBubble", value)} label="화면 버튼" />
-            <Toggle checked={settings.autoStart} onChange={(value) => update("autoStart", value)} label="로그인 시 시작" />
+            <Toggle checked={settings.showBubble} onChange={(value) => update("showBubble", value)} label="작은 버튼 표시" />
+            <Toggle checked={settings.autoStart} onChange={(value) => update("autoStart", value)} label="로그인할 때 자동 시작" />
           </div>
-          <button className="danger-button" onClick={() => void clearContext()}><Trash2 size={14} /> 로컬 기록 모두 삭제</button>
+          <button className="danger-button" onClick={() => void clearContext()}><Trash2 size={14} /> 최근 창 기록과 저장한 작업 모두 삭제</button>
         </section>
       </div>
 

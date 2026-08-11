@@ -111,10 +111,10 @@ export function explainCausalChain(query: CausalQuery): CausalExplanation {
     : events[returnIndex];
   const interrupted = returnIndex !== undefined;
   const answer = interrupted
-    ? `현재 ${label(current)} 창으로 다시 돌아왔습니다. 중간에 다른 창 전환이 있었습니다.`
+    ? `${label(current)} 창으로 돌아왔어요. 중간에 다른 창을 사용했습니다.`
     : originEvent
-      ? `현재 ${label(current)} 창은 직전 ${label(originEvent)} 뒤에 열렸습니다.`
-      : `현재 ${label(current)} 창이 관측되었습니다.`;
+      ? `${label(originEvent)} 다음에 ${label(current)} 창을 열었어요.`
+      : `지금 ${label(current)} 창을 사용하고 있어요.`;
   const focusCount = selectedIndexes.filter((index) => isWindowEvent(events[index])).length;
   const hasObservedInterruption =
     returnIndex !== undefined &&
@@ -130,7 +130,7 @@ export function explainCausalChain(query: CausalQuery): CausalExplanation {
   return {
     answer,
     origin: originEvent ? label(originEvent) : undefined,
-    nextAction: `현재 창(${label(current)})에서 계속하기`,
+    nextAction: `${label(current)}에서 계속하기`,
     chain,
     evidenceIds: chain.map((step) => step.eventId),
     interrupted,
@@ -141,7 +141,7 @@ export function explainCausalChain(query: CausalQuery): CausalExplanation {
 
 function emptyExplanation(): CausalExplanation {
   return {
-    answer: "아직 관측된 창이 없습니다.",
+    answer: "최근에 사용한 창이 없습니다.",
     chain: [],
     evidenceIds: [],
     interrupted: false,

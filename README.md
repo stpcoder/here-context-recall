@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>다시 돌아온 창에서, 이유도 함께.</strong><br />
-  잠깐 다른 일을 보고 돌아온 순간, 왜 열었는지와 다음 한 단계를 복원합니다.
+  잠깐 다른 일을 보고 돌아온 순간, 왜 열었는지와 지금 할 일을 알려줍니다.
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
 
 <p align="center">
   <a href="https://stpcoder.github.io/here-context-recall/">
-    <img src="site/public/images/context-return.svg" width="1000" alt="Excel에서 Outlook으로 잠깐 이동했다가 돌아오자 Here가 하던 일과 다음 행동을 복원하는 장면" />
+    <img src="site/public/images/context-return.svg" width="1000" alt="Excel에서 Outlook으로 잠깐 이동했다가 돌아오자 Here가 하던 일과 지금 할 일을 알려주는 장면" />
   </a>
 </p>
 
@@ -35,7 +35,7 @@
 
 Teams 요청을 보고 Excel을 열었습니다. 회의 알림 때문에 Outlook을 잠깐 확인했습니다. 다시 Excel로 돌아왔는데, 방금 보려던 숫자가 기억나지 않습니다.
 
-Here는 그 순간 `Ctrl + Shift + Space` 한 번으로 최근 창 흐름을 되짚습니다.
+Here는 그 순간 `Ctrl + Shift + Space` 한 번으로 최근에 사용한 창과 하던 일을 보여줍니다.
 
 ```text
 14:31  Teams       “Q3 예산안 숫자 확인 부탁드립니다”
@@ -47,9 +47,9 @@ Here는 그 순간 `Ctrl + Shift + Space` 한 번으로 최근 창 흐름을 되
 → “비용 증감 합계를 확인하던 중이었어요.”
 ```
 
-| 처음 요청 | 잠깐의 이탈 | 다음 한 단계 |
+| 처음 요청 | 중간에 본 창 | 지금 할 일 |
 | --- | --- | --- |
-| 어디서 시작됐는지 | 무엇이 흐름을 끊었는지 | 지금 어디서 이어갈지 |
+| 어디서 시작됐는지 | 무엇 때문에 멈췄는지 | 지금 어디서 계속할지 |
 
 ## 다운로드
 
@@ -62,28 +62,28 @@ Here는 그 순간 `Ctrl + Shift + Space` 한 번으로 최근 창 흐름을 되
 
 ## 제품 원칙
 
-### 흐름은 로컬에서 먼저 판단합니다
+### 관련된 창은 내 PC에서 먼저 고릅니다
 
-활성 앱, 창 제목, 전환 시각을 최근 10분 동안 메모리에 보관합니다. `요청 → 파일 → 인터럽션 → 복귀`의 근거를 로컬 규칙으로 좁힌 뒤, 최대 5개 이벤트만 설명 단계에 사용합니다.
+사용한 앱, 창 제목, 시각을 최근 10분 동안 메모리에 보관합니다. `요청 → 파일 → 다른 창 → 원래 창` 순서에서 관련된 기록을 고른 뒤, 최대 5개만 AI 설명에 사용합니다.
 
 ### 회사의 AI를 그대로 연결합니다
 
 Here는 OpenAI-compatible API를 제품의 기본 연결 방식으로 사용합니다. vLLM, 사내 gateway 또는 호환 endpoint에 세 값만 입력하면 됩니다.
 
 ```text
-Base URL     https://llm.company.internal/v1
-Model ID     Qwen/Qwen2.5-72B-Instruct
-Bearer token ••••••••••••
+API 주소    https://llm.company.internal/v1
+모델 이름   Qwen/Qwen2.5-72B-Instruct
+접근 토큰   ••••••••••••
 ```
 
 - `/chat/completions`와 Here JSON 응답 계약을 실제 요청으로 검증합니다.
 - JSON Schema 미지원 서버는 `json_object`와 prompt-only JSON으로 자동 호환됩니다.
-- 모델 호출이 실패하거나 예산을 넘으면 관측된 로컬 결과로 즉시 돌아갑니다.
+- AI 연결이 실패하거나 사용 한도를 넘으면 내 PC에서 만든 답을 바로 보여줍니다.
 - token은 renderer나 브라우저 저장소가 아닌 OS 보호 저장소에 암호화됩니다.
 
 [vLLM/OpenAI-compatible 연결 가이드 →](VLLM.md)
 
-### 업무 내용이 아니라 흐름만 기록합니다
+### 업무 내용이 아니라 사용한 창만 기록합니다
 
 | 기록 | 기록하지 않음 | 사용자 제어 |
 | --- | --- | --- |
@@ -91,7 +91,7 @@ Bearer token ••••••••••••
 | 프로세스 · 창 위치와 크기 | 파일 본문 · 셀 값 · URL | 일시 정지 · 앱 제외 |
 | 최근 10분 메모리 | 상시 스크린샷 | 보존 시간 변경 · 즉시 삭제 |
 
-화면 이미지는 기본으로 꺼져 있습니다. 별도 옵션을 켜고 사용자가 직접 복원 또는 체크포인트를 실행한 순간에만 활성 창 한 장을 사용합니다.
+화면 이미지는 기본으로 꺼져 있습니다. 별도 옵션을 켜고 사용자가 직접 ‘하던 일 찾기’ 또는 ‘작업 저장’을 누른 순간에만 현재 창 한 장을 사용합니다.
 
 ## 작동 구조
 
@@ -107,7 +107,7 @@ optional OpenAI-compatible / vLLM summary
 Here recall panel
 ```
 
-LLM은 작업 경계를 새로 만들지 않습니다. 사람의 Pause/Resume, 동일 창 복귀, 비활성 구간을 로컬 규칙으로 먼저 판단하고 모델은 선정된 근거만 한 문장으로 정리합니다. 세부 수집·작업 경계·호출 예산은 [CAPTURE.md](CAPTURE.md)에 공개되어 있습니다.
+AI가 임의로 작업 구간을 나누지는 않습니다. 사용자가 기록을 멈추거나 다시 켠 시점, 원래 창으로 돌아온 시점, 오래 사용하지 않은 구간을 앱 안의 규칙으로 먼저 판단합니다. AI는 그중 관련된 기록만 한 문장으로 정리합니다. 자세한 기준은 [CAPTURE.md](CAPTURE.md)에 공개되어 있습니다.
 
 <details>
 <summary><strong>개발과 검증</strong></summary>

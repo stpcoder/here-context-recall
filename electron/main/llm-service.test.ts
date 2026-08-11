@@ -134,7 +134,7 @@ describe("LlmService", () => {
       visionVerified: false,
       structuredOutputMode: "json-schema",
     });
-    expect(result.warning).toContain("text-only");
+    expect(result.warning).toContain("앱과 창 제목만");
   });
 
   it("falls back from JSON Schema to JSON object and validates evidence IDs", async () => {
@@ -344,7 +344,7 @@ describe("LlmService", () => {
     );
     expect(() =>
       validateEndpoint("https://api.example.com/v1?token=secret"),
-    ).toThrow(/query/);
+    ).toThrow(/쿼리/);
   });
 
   it("accepts a pasted full chat-completions URL as a Base URL", async () => {

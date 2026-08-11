@@ -297,7 +297,7 @@ export class LlmService {
       const visionRequested = Boolean(options.visionRequested || options.vision);
       const warning =
         visionRequested && !probe.visionUsed
-          ? "이미지 입력은 지원되지 않아 창 제목 근거를 사용하는 text-only 모드로 확인했습니다."
+          ? "이 모델은 이미지를 지원하지 않아 앱과 창 제목만으로 연결을 확인했습니다."
           : undefined;
       return {
         ok: true,
@@ -477,7 +477,7 @@ export class LlmService {
           };
         } catch (error) {
           lastError = new Error(
-            `선택한 모델이 Here 복원 JSON을 반환하지 않았습니다 (${outputModeLabel(attempt.outputMode)}).`,
+            `선택한 모델이 Here에서 사용할 수 있는 JSON을 반환하지 않았습니다 (${outputModeLabel(attempt.outputMode)}).`,
             { cause: error },
           );
           if (attempt.vision) sawVisionFailure = true;
@@ -506,7 +506,7 @@ export class LlmService {
 
     throw (
       lastError ??
-      new Error("선택한 모델로 Here 복원 형식을 확인하지 못했습니다.")
+      new Error("선택한 모델의 응답을 Here에서 사용할 수 없습니다.")
     );
   }
 
@@ -1001,7 +1001,7 @@ function readableError(error: unknown): string {
   if (/CERT_|certificate|ERR_SSL|TLS/i.test(detail))
     return "사내 TLS 인증서를 OS 신뢰 저장소에서 확인해 주세요.";
   if (/ENOTFOUND|NAME_NOT_RESOLVED|dns/i.test(detail))
-    return "Base URL의 호스트 이름을 찾지 못했습니다.";
+    return "API 주소의 서버를 찾지 못했습니다.";
   if (/ECONNREFUSED|CONNECTION_REFUSED/i.test(detail))
     return "모델 서버가 연결을 거부했습니다. 주소와 포트를 확인해 주세요.";
   if (error instanceof TypeError) return "모델 서버에 연결하지 못했습니다.";
@@ -1042,7 +1042,7 @@ function parseChatContent(body: unknown): string {
         ? message.content.flatMap((part) => (part.text ? [part.text] : [])).join("")
         : "";
   const result = content.trim() || message.reasoning_content?.trim() || "";
-  if (!result) throw new Error("Model response did not contain text.");
+  if (!result) throw new Error("모델 응답에 사용할 수 있는 내용이 없습니다.");
   return result;
 }
 
@@ -1052,11 +1052,11 @@ function openAiConnectionError(
   requestId?: string,
 ): string {
   let message: string;
-  if (status === 401) message = "Bearer token이 거부되었습니다 (401).";
+  if (status === 401) message = "접근 토큰이 거부되었습니다 (401).";
   else if (status === 403)
     message = "선택한 모델을 호출할 권한이 없습니다 (403).";
   else if (status === 404)
-    message = "Base URL의 /chat/completions 경로를 찾지 못했습니다 (404).";
+    message = "API 주소에서 /chat/completions 경로를 찾지 못했습니다 (404).";
   else if (status === 413)
     message = "이미지 요청 크기가 모델 서버 제한을 넘었습니다 (413).";
   else if (status === 415)
@@ -1064,11 +1064,11 @@ function openAiConnectionError(
   else if (status === 429)
     message = "모델 서버가 요청을 제한했습니다 (429).";
   else if (status === 400 || status === 422)
-    message = `Model ID, chat template 또는 OpenAI 호환 설정을 확인하세요 (${status}).`;
+    message = `모델 이름, 대화 형식 또는 OpenAI 호환 설정을 확인해 주세요 (${status}).`;
   else if (status >= 500)
     message = `모델 서버가 오류를 반환했습니다 (${status}).`;
-  else message = `Chat completion 호출에 실패했습니다 (${status}).`;
-  const suffix = [detail, requestId ? `request ${requestId}` : undefined]
+  else message = `모델 호출에 실패했습니다 (${status}).`;
+  const suffix = [detail, requestId ? `요청 ID ${requestId}` : undefined]
     .filter(Boolean)
     .join(" · ");
   return suffix ? `${message} ${suffix}` : message;
@@ -1244,9 +1244,9 @@ export function deterministicFallback(
   return {
     summary:
       target && trigger
-        ? `${trigger.app}에서 ${target}까지 이어진 흐름입니다.`
-        : "최근 활동이 아직 충분하지 않습니다.",
-    target: target ?? "최근 활동",
+        ? `${trigger.app}에서 시작한 작업이에요. 확인하던 항목은 ${target}입니다.`
+        : "최근에 사용한 창이 아직 충분하지 않습니다.",
+    target: target ?? "최근 창",
     evidenceIds: cited,
     nextAction: target ? `${target} 작업을 이어가세요.` : undefined,
     source: "fallback",

@@ -19,11 +19,11 @@
   </g>
 
   <g font-family="Pretendard, Apple SD Gothic Neo, sans-serif">
-    <text x="60" y="177" fill="#6A6B70" font-size="13" font-weight="720" letter-spacing="1.5">INTERRUPTED-WORK RECALL</text>
+    <text x="60" y="177" fill="#6A6B70" font-size="13" font-weight="720" letter-spacing="1.5">하던 일 찾기</text>
     <text x="60" y="237" fill="#111214" font-size="51" font-weight="760" letter-spacing="-3.1">다시 돌아온 창에서,</text>
     <text x="60" y="297" fill="#F04E32" font-size="51" font-weight="760" letter-spacing="-3.1">이유도 함께.</text>
     <text x="60" y="355" fill="#64666B" font-size="17" font-weight="560" letter-spacing="-0.5">잠깐 다른 일을 보고 돌아온 순간,</text>
-    <text x="60" y="382" fill="#64666B" font-size="17" font-weight="560" letter-spacing="-0.5">왜 열었는지와 다음 한 단계를 복원합니다.</text>
+    <text x="60" y="382" fill="#64666B" font-size="17" font-weight="560" letter-spacing="-0.5">왜 열었는지와 지금 할 일을 알려줍니다.</text>
 
     <g transform="translate(60 454)">
       <rect width="242" height="54" rx="12" fill="#111214"/>
