@@ -1,10 +1,15 @@
 import { app } from "electron";
 
 const timeoutMs = 5_000;
+const watchdog = setTimeout(() => {
+  console.error("Windows reader smoke test process did not finish.");
+  process.exit(1);
+}, 15_000);
 
 try {
   if (process.platform !== "win32")
     throw new Error("The native reader smoke test must run on Windows.");
+  app.disableHardwareAcceleration();
   await app.whenReady();
   const reader = await import("get-windows");
   if (typeof reader.activeWindow !== "function")
@@ -24,10 +29,12 @@ try {
       foregroundWindowAvailable: Boolean(sample),
     }),
   );
-  app.exit(0);
+  clearTimeout(watchdog);
+  process.exit(0);
 } catch (error) {
   console.error(
     error instanceof Error ? error.message : "Windows reader smoke test failed.",
   );
-  app.exit(1);
+  clearTimeout(watchdog);
+  process.exit(1);
 }

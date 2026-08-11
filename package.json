@@ -14,7 +14,7 @@
     "dev:renderer": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:windows-reader": "electron qa/windows-reader-smoke.mjs",
+    "test:windows-reader": "electron --no-sandbox --disable-gpu qa/windows-reader-smoke.mjs",
     "build": "npm run typecheck && npm test && electron-vite build",
     "build:app": "npm run typecheck && electron-vite build",
     "dist:win": "npm run build:app && electron-builder --win nsis portable --x64 --publish never",
