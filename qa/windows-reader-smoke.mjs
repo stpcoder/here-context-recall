@@ -1,5 +1,3 @@
-import { app } from "electron";
-
 const timeoutMs = 5_000;
 const watchdog = setTimeout(() => {
   console.error("Windows reader smoke test process did not finish.");
@@ -9,8 +7,8 @@ const watchdog = setTimeout(() => {
 try {
   if (process.platform !== "win32")
     throw new Error("The native reader smoke test must run on Windows.");
-  app.disableHardwareAcceleration();
-  await app.whenReady();
+  if (!process.versions.electron)
+    throw new Error("The native reader smoke test must run with Electron.");
   const reader = await import("get-windows");
   if (typeof reader.activeWindow !== "function")
     throw new Error("get-windows did not expose activeWindow().");
