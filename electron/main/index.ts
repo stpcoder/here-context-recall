@@ -137,10 +137,10 @@ function makeRecall(): BrowserWindow {
   if (recallWindow && !recallWindow.isDestroyed()) return recallWindow;
   recallWindow = createWindow(
     {
-      width: 820,
-      height: 540,
-      minWidth: 620,
-      minHeight: 520,
+      width: 900,
+      height: 620,
+      minWidth: 760,
+      minHeight: 620,
       frame: false,
       transparent: true,
       resizable: true,

@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>왜 열었는지, 다음에 뭘 할지.</strong><br />
-  최근 창 전환을 연결해 끊긴 업무의 시작점과 다음 한 단계를 되찾습니다.
+  현재 창을 열기 전부터 다른 창을 거쳐 돌아온 순간까지, 시간순으로 되찾습니다.
 </p>
 
 <p align="center">
@@ -39,19 +39,19 @@
 1. Here를 설치하고 **창 흐름 허용**을 켭니다.
 2. 평소처럼 메신저, 브라우저, 문서 창을 오갑니다.
 3. “내가 이걸 왜 열었지?” 싶은 순간 `Ctrl + Shift + Space`를 누릅니다.
-4. 시작된 요청, 실제 이동, 다시 시작할 곳, 다음 한 단계를 확인합니다.
+4. 이 창을 열기 전, 처음 연 순간, 다른 창, 지금 복귀 순서로 확인합니다.
 
 macOS 단축키는 `Command + Shift + Space`입니다. 몇 시간 뒤나 다음 날 이어야 할 지점은 `Ctrl + Shift + M`으로 **여기 기억**에 남길 수 있습니다.
 
 <p align="center">
-  <img src="site/public/images/here-recall.png" width="860" alt="시작된 요청, 실제 이동, 다시 시작할 곳과 다음 행동을 보여주는 Here 복원 화면" />
+  <img src="site/public/images/here-recall.png" width="900" alt="Teams 요청에서 Excel을 열고 Outlook을 거쳐 다시 Excel로 돌아온 흐름을 시간순으로 보여주는 Here 복원 화면" />
 </p>
 
-| 시작된 요청 | 실제 이동 | 다시 시작할 곳 | 다음 한 단계 |
+| 열기 전 | 이 창을 처음 열음 | 이 창을 벗어난 동안 | 지금 복귀 |
 | --- | --- | --- | --- |
-| 김OO · A sample 확인 | Slack → Finder → Excel | Sample A · Condition B | Condition B 결과 확인 |
+| Teams · Q3 예산 요청 | Excel · Q3_예산검토.xlsx | Outlook · 회의 일정 | Excel · 비용 증감 확인 |
 
-창 목록을 길게 보여주는 앱이 아닙니다. 지금 일을 다시 시작하는 데 필요한 네 가지만 남깁니다.
+창 목록을 임의로 분류하지 않습니다. 실제로 관측한 흐름을 위에서 아래로 읽으면 현재 창의 이유와 다음 행동이 함께 보입니다.
 
 ## 사내 AI 연결
 

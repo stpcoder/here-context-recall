@@ -158,7 +158,7 @@ select:focus-visible {
 
 .bubble-paused {
   color: #a1a1aa;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -672,6 +672,280 @@ select:focus-visible {
 
 .grounding-note b { color: var(--ink-soft); font-weight: 650; }
 .grounding-note span { overflow: hidden; text-overflow: ellipsis; }
+.memory-action kbd { font-size: 10px; }
+
+/* Chronological recall: before → opened → away → now */
+.recall-shell {
+  height: 100vh;
+  min-height: 0;
+}
+
+.recall-layout {
+  min-height: calc(100vh - 56px);
+  padding: 17px 20px 14px;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 13px;
+  overflow: hidden;
+}
+
+.recall-intro { min-width: 0; }
+
+.recall-intro .result-label {
+  height: 16px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.recall-intro h1 {
+  margin: 7px 0 9px;
+  overflow: hidden;
+  color: #09090b;
+  font-size: clamp(25px, 3.2vw, 29px);
+  font-weight: 700;
+  letter-spacing: -0.85px;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recall-reason {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 11px;
+  align-items: baseline;
+}
+
+.recall-reason > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.recall-reason p {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 620;
+  letter-spacing: -0.2px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recall-body {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.14fr) minmax(300px, .86fr);
+  gap: 13px;
+}
+
+.journey-card,
+.continue-card {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.journey-card { overflow: hidden; }
+
+.journey-header,
+.continue-header {
+  height: 42px;
+  padding: 0 13px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.journey-header > div { min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+.journey-header span,
+.continue-header > span { color: var(--ink); font-size: 12px; font-weight: 700; }
+.journey-header small,
+.journey-header time,
+.continue-header small { color: var(--faint); font-size: 10px; font-weight: 600; }
+.journey-header time { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.continue-header small { display: flex; align-items: center; gap: 4px; }
+
+.journey-list { margin: 0; padding: 4px 0; list-style: none; }
+
+.journey-row {
+  position: relative;
+  min-height: 49px;
+  padding: 4px 13px 4px 0;
+  display: grid;
+  grid-template-columns: 45px minmax(0, 1fr);
+  align-items: center;
+}
+
+.journey-row.phase-away { background: #f7f7f8; }
+
+.journey-rail {
+  position: relative;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+}
+
+.journey-rail::after {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  bottom: -50%;
+  left: 50%;
+  width: 1px;
+  content: "";
+  background: var(--line-strong);
+}
+
+.journey-row:last-child .journey-rail::after { display: none; }
+
+.journey-rail > span {
+  position: relative;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #52525b;
+  background: #fff;
+}
+
+.phase-away .journey-rail > span { border-style: dashed; color: var(--muted); background: #f7f7f8; }
+.phase-opened .journey-rail > span { border-color: #71717a; color: var(--ink); }
+.phase-now .journey-rail > span { border-color: var(--ink); color: #fff; background: var(--ink); }
+
+.journey-content { min-width: 0; }
+
+.journey-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.journey-meta span { color: var(--muted); font-size: 10px; font-weight: 680; }
+.journey-meta time { color: var(--faint); font-size: 10px; font-variant-numeric: tabular-nums; }
+.phase-opened .journey-meta span,
+.phase-now .journey-meta span { color: var(--ink); }
+
+.journey-window {
+  min-width: 0;
+  margin-top: 3px;
+  display: grid;
+  grid-template-columns: minmax(82px, .65fr) minmax(0, 1.35fr);
+  gap: 9px;
+  align-items: baseline;
+}
+
+.journey-window strong,
+.journey-window p {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.journey-window strong { color: var(--ink); font-weight: 650; }
+.journey-window p { margin: 0; color: var(--muted); font-weight: 520; }
+.phase-now .journey-window strong,
+.phase-now .journey-window p { color: var(--ink); font-weight: 680; }
+
+.recall-aside { min-width: 0; display: flex; flex-direction: column; }
+
+.continue-card {
+  padding: 0 12px 12px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.continue-header { margin: 0 -12px; padding-inline: 12px; }
+
+.window-preview {
+  position: relative;
+  height: 118px;
+  margin-top: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f2f2f3;
+}
+
+.window-preview > img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+
+.window-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 15px;
+  color: #71717a;
+  background:
+    linear-gradient(90deg, transparent 29%, #dedee1 29%, #dedee1 calc(29% + 1px), transparent calc(29% + 1px)),
+    repeating-linear-gradient(0deg, #f6f6f7 0, #f6f6f7 25px, #dedee1 26px);
+}
+
+.window-placeholder > i { width: 22%; height: 8px; margin-top: 3px; border-radius: 4px; background: #d4d4d8; }
+
+.window-caption {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-width: 0;
+  padding: 20px 10px 9px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  color: #fff;
+  background: linear-gradient(transparent, rgba(9, 9, 11, .84));
+}
+
+.window-preview:not(.has-image) .window-caption { color: var(--ink); background: linear-gradient(transparent, rgba(255, 255, 255, .96)); }
+.window-caption span { font-size: 10px; font-weight: 650; }
+.window-caption strong { overflow: hidden; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+
+.continue-details { margin-top: 7px; }
+
+.continue-details > div {
+  min-height: 43px;
+  padding: 7px 1px;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.continue-details span { color: var(--muted); font-size: 10px; font-weight: 650; }
+.continue-details strong { overflow: hidden; color: var(--ink); font-size: 12px; font-weight: 680; text-overflow: ellipsis; white-space: nowrap; }
+.continue-action { width: 100%; margin-top: auto; }
+
+.saved-context { height: 43px; margin-top: 7px; }
+.saved-context small { font-size: 10px; }
+.saved-context strong { font-size: 11px; }
+
+.recall-footer {
+  grid-column: 1;
+  min-height: 41px;
+  margin-top: 0;
+  padding-top: 10px;
+}
+
+.grounding-note { font-size: 10px; }
+.memory-action { min-height: 36px; font-size: 11px; }
+.pause-action { width: 36px; height: 36px; }
+.checkpoint-note { right: 20px; bottom: 58px; }
+.error-note { grid-column: 1; margin: -5px 0 0; }
 
 /* Settings */
 .settings-shell { display: flex; flex-direction: column; background: var(--canvas); }
@@ -925,7 +1199,11 @@ select:focus-visible {
     padding: 20px;
   }
 
-  .recall-aside { margin-top: 17px; }
+  .recall-intro h1 { white-space: normal; }
+  .recall-reason { grid-template-columns: 1fr; gap: 4px; }
+  .recall-reason p { white-space: normal; }
+  .recall-body { grid-template-columns: 1fr; }
+  .recall-aside { margin-top: 0; }
   .recall-footer { grid-column: 1; flex-wrap: wrap; }
   .checkpoint-note { right: 20px; }
 }
@@ -934,7 +1212,7 @@ select:focus-visible {
   .panel-topbar,
   .settings-header { padding-right: 15px; padding-left: 15px; }
   .recall-layout { padding-right: 16px; padding-left: 16px; }
-  .recall-copy h1 { font-size: 27px; }
+  .recall-intro h1 { font-size: 25px; }
   .settings-scroll { padding-right: 15px; padding-left: 15px; }
   .provider-grid,
   .field-pair { grid-template-columns: 1fr; }
