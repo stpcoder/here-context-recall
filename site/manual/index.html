@@ -3,17 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f4f1e9" />
+    <meta name="theme-color" content="#f5f5f5" />
     <meta name="description" content="Here 설치부터 맥락 복원, 여기 기억, 사내 vLLM 연결까지 화면으로 보는 사용법." />
     <link rel="icon" href="/here-mark.svg" />
     <link rel="stylesheet" href="../styles.css" />
     <link rel="stylesheet" href="./manual.css" />
+    <noscript><style>.reveal{opacity:1!important;transform:none!important}</style></noscript>
     <title>Here 사용법 — 화면으로 3분 만에 시작하기</title>
   </head>
   <body class="manual-page">
     <a class="skip-link" href="#manual-main">본문으로 바로가기</a>
     <header class="site-header is-scrolled" data-header>
-      <a class="brand" href="../"><img src="/here-mark.svg" alt="" /><span>here<b>.</b></span></a>
+      <a class="brand" href="../"><img src="/here-mark.svg" alt="" /><span>here</span></a>
       <nav aria-label="사용법 메뉴"><a href="#start">처음 설정</a><a href="#recall">맥락 복원</a><a href="#remember">여기 기억</a><a href="#model">사내 AI</a><a href="#privacy">개인정보</a></nav>
       <a class="header-cta" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows용 다운로드 <span>↘</span></a>
       <button class="menu-button" type="button" aria-expanded="false" aria-label="메뉴 열기" data-menu><i></i><i></i></button>
@@ -21,7 +22,7 @@
 
     <main id="manual-main">
       <section class="manual-hero section-shell">
-        <div class="manual-hero-copy reveal"><p class="eyebrow">HERE PRODUCT GUIDE · 2026</p><h1>화면을 보며,<br /><em>그대로.</em></h1><p>설치부터 “왜 여기지?”와 사내 업무 모델 연결까지.<br />빨간 표시만 따라가면 됩니다.</p><div class="hero-actions"><a class="button button-primary" href="#start">처음 설정부터 보기 <span>↓</span></a><a class="text-link" href="../">제품 소개로 돌아가기 <span>←</span></a></div></div>
+        <div class="manual-hero-copy reveal"><p class="eyebrow">HERE PRODUCT GUIDE · 2026</p><h1>화면을 보며,<br /><em>그대로.</em></h1><p>설치부터 “왜 여기지?”와 사내 업무 모델 연결까지.<br />표시된 지점만 따라가면 됩니다.</p><div class="hero-actions"><a class="button button-primary" href="#start">처음 설정부터 보기 <span>↓</span></a><a class="text-link" href="../">제품 소개로 돌아가기 <span>←</span></a></div></div>
         <div class="guide-index reveal" data-delay="1"><p>빠른 이동</p><a href="#start"><span>01</span>창 흐름 켜기 <b>→</b></a><a href="#recall"><span>02</span>왜 여기지? <b>→</b></a><a href="#remember"><span>03</span>여기 기억 <b>→</b></a><a href="#model"><span>04</span>업무 모델 연결 <b>→</b></a><a href="#privacy"><span>05</span>개인정보 제어 <b>→</b></a></div>
       </section>
 
@@ -51,13 +52,13 @@
             <figure class="manual-figure reveal">
               <div class="screenshot-frame landscape-frame">
                 <div class="window-bar"><i></i><i></i><i></i><span>Here — Why was I here?</span></div>
-                <img src="/images/here-recall.png" width="1640" height="1160" loading="lazy" decoding="async" alt="Here 복원 화면에서 업무 흐름과 다음 행동을 보는 위치" />
-                <span class="focus-ring" style="--x:3%;--y:43%;--w:54%;--h:32%"></span>
-                <span class="callout" style="--x:7%;--y:38%"><b>1</b> 원인 → 현재 흐름</span>
-                <span class="focus-ring" style="--x:3%;--y:89%;--w:44%;--h:7%"></span>
-                <span class="callout callout-bottom" style="--x:27%;--y:81%"><b>2</b> 지금 할 일 하나</span>
+                <img src="/images/here-recall.png" width="1640" height="1080" loading="lazy" decoding="async" alt="Here 복원 화면에서 시작점, 이동 경로, 작업 대상과 다음 단계를 보는 위치" />
+                <span class="focus-ring" style="--x:3%;--y:34%;--w:50%;--h:34%"></span>
+                <span class="callout" style="--x:7%;--y:31%"><b>1</b> 시작점과 실제 이동</span>
+                <span class="focus-ring" style="--x:55%;--y:14%;--w:42%;--h:61%"></span>
+                <span class="callout callout-bottom" style="--x:59%;--y:76%"><b>2</b> 지점과 다음 한 단계</span>
               </div>
-              <figcaption><strong>근거 체인 읽기</strong><span>‘잠깐 끊김’과 ‘다시 돌아옴’이 표시된 순서만 확인하면 됩니다.</span></figcaption>
+              <figcaption><strong>맥락 핸드오프</strong><span>시작된 요청, 실제 이동, 다시 시작할 곳과 다음 한 단계를 한 번에 확인합니다.</span></figcaption>
             </figure>
             <div class="when-grid reveal"><article><span>USE 01</span><h3>엑셀로 돌아왔는데<br />뭘 보려 했는지 잊었을 때</h3></article><article><span>USE 02</span><h3>메일 답장 뒤<br />원래 작업을 다시 찾을 때</h3></article><article><span>USE 03</span><h3>브라우저 탭을 돌다<br />출발점을 놓쳤을 때</h3></article></div>
           </section>
@@ -67,8 +68,8 @@
             <figure class="manual-figure reveal">
               <div class="screenshot-frame landscape-frame">
                 <div class="window-bar"><i></i><i></i><i></i><span>Here — Checkpoint</span></div>
-                <img src="/images/here-recall.png" width="1640" height="1160" loading="lazy" decoding="async" alt="Here 복원 화면의 여기 기억 버튼" />
-                <span class="focus-ring" style="--x:48%;--y:89%;--w:14%;--h:7%"></span>
+                <img src="/images/here-recall.png" width="1640" height="1080" loading="lazy" decoding="async" alt="Here 복원 화면의 여기 기억 버튼" />
+                <span class="focus-ring" style="--x:49%;--y:89%;--w:14%;--h:8%"></span>
                 <span class="callout callout-bottom" style="--x:50%;--y:81%"><b>1</b> 여기 기억</span>
               </div>
               <figcaption><strong>체크포인트</strong><span>최대 12개·7일. OS 보호 저장소로 암호화하며 언제든 모두 지울 수 있습니다.</span></figcaption>
@@ -110,7 +111,7 @@
 
       <section class="manual-final"><div class="section-shell reveal"><img src="/here-mark.svg" alt="" /><div><p>이제 평소처럼 일하면 됩니다.</p><h2>잊은 순간에,<br />Here를 누르세요.</h2></div><a class="button button-primary" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows용 Here 받기 <span>↓</span></a></div></section>
     </main>
-    <footer class="site-footer section-shell"><a class="brand" href="../"><img src="/here-mark.svg" alt="" /><span>here<b>.</b></span></a><p>Product guide</p><div><a href="../">제품 소개</a><a href="https://github.com/stpcoder/here-context-recall/releases/tag/latest-build">다운로드</a><a href="https://github.com/stpcoder/here-context-recall">GitHub</a></div><small>© 2026 Here Hackathon Team</small></footer>
+    <footer class="site-footer section-shell"><a class="brand" href="../"><img src="/here-mark.svg" alt="" /><span>here</span></a><p>Product guide</p><div><a href="../">제품 소개</a><a href="https://github.com/stpcoder/here-context-recall/releases/tag/latest-build">다운로드</a><a href="https://github.com/stpcoder/here-context-recall">GitHub</a></div><small>© 2026 Here Hackathon Team</small></footer>
     <script type="module" src="../site.js"></script>
   </body>
 </html>

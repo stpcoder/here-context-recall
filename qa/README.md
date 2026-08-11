@@ -7,7 +7,7 @@ the Electron window sizes below, using only the development-only
 
 | Surface | Native layout | Published asset |
 | --- | --- | --- |
-| Recall | 820 × 580 | `site/public/images/here-recall.png` (2×) |
+| Recall | 820 × 540 | `site/public/images/here-recall.png` (2×) |
 | Settings / Work AI | 600 × 820 | `site/public/images/here-settings.png` (2×) |
 | Privacy settings | 600 × 820 | `site/public/images/here-settings-privacy.png` (2×) |
 | Floating bubble | 242 × 58 | `site/public/images/here-bubble@2x.png` (2×) |

@@ -160,69 +160,101 @@ function Bubble() {
   );
 }
 
-function EvidenceChain({ state }: { state: RecallState }) {
+function splitEvidenceLabel(value?: string): { app: string; detail: string } {
+  if (!value) return { app: "최근 활동", detail: "시작점이 아직 충분하지 않아요." };
+  const [app, ...detail] = value.split(" — ");
+  return { app, detail: detail.join(" — ") || value };
+}
+
+function interruptionLabel(state: RecallState): string | undefined {
   const chain = state.explanation?.chain ?? [];
-  if (!chain.length && state.current)
-    return (
-      <div className="single-evidence">
-        <span />
-        <time>{clock(state.current.timestamp)}</time>
-        <div>
-          <strong>{appLabel(state.current)}</strong>
-          <small>{titleLabel(state.current)}</small>
-        </div>
-      </div>
-    );
+  const interruption = chain.find((step) => step.role === "interruption");
+  const current = chain.at(-1);
+  if (!interruption || !current) return undefined;
+  const minutes = Math.max(1, Math.round((current.timestamp - interruption.timestamp) / 60_000));
+  return `${splitEvidenceLabel(interruption.label).app} · ${minutes}분 멈춤`;
+}
+
+function OriginCard({ state }: { state: RecallState }) {
+  const chain = state.explanation?.chain ?? [];
+  const start = chain.find((step) => step.role === "context") ?? chain[0];
+  const origin = splitEvidenceLabel(state.explanation?.origin || start?.label);
   return (
-    <ol className="chain" aria-label="관찰한 업무 흐름">
-      {chain.slice(-5).map((step, index) => (
-        <motion.li
-          key={step.eventId}
-          className={`chain-item chain-${step.role}`}
-          initial={showcase ? false : { opacity: 0, x: -8 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.06 + index * 0.035, duration: 0.2 }}
-        >
-          <span className="chain-rail"><i /></span>
-          <time>{clock(step.timestamp)}</time>
-          <div>
-            <strong>{step.label}</strong>
-            {step.role !== "context" && (
-              <small>{step.role === "interruption" ? "방해" : "복귀"}</small>
-            )}
-          </div>
-        </motion.li>
-      ))}
-    </ol>
+    <section className="origin-card" aria-label="업무가 시작된 이유">
+      <header>
+        <span>시작점</span>
+        <time>{origin.app}{start ? ` · ${clock(start.timestamp)}` : ""}</time>
+      </header>
+      <p>{origin.detail}</p>
+    </section>
   );
 }
 
-function ContextVisual({ state }: { state: RecallState }) {
+function EvidenceTrail({ state }: { state: RecallState }) {
+  const chain = state.explanation?.chain ?? [];
+  const path = chain
+    .filter((step) => step.role === "context" || step.role === "target")
+    .slice(0, 3);
+  if (!path.length && state.current)
+    path.push({
+      eventId: state.current.id,
+      timestamp: state.current.timestamp,
+      label: `${appLabel(state.current)} — ${titleLabel(state.current)}`,
+      role: "target",
+    });
+  return (
+    <section className="evidence-trail" aria-label="관찰한 실제 이동 경로">
+      <div className="trail-title">
+        <span>실제 이동</span>
+        <small>{chain.length || path.length}개 창 근거</small>
+      </div>
+      <div className="trail-row">
+        {path.map((step, index) => (
+          <motion.div
+            className="trail-step"
+            key={step.eventId}
+            initial={showcase ? false : { opacity: 0, x: -5 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: index * 0.05, duration: 0.18 }}
+          >
+            {index > 0 && <ArrowRight size={12} aria-hidden="true" />}
+            <b>{splitEvidenceLabel(step.label).app}</b>
+            <time>{clock(step.timestamp)}</time>
+          </motion.div>
+        ))}
+      </div>
+      {interruptionLabel(state) && <div className="interruption-note"><i />{interruptionLabel(state)}</div>}
+    </section>
+  );
+}
+
+function ResumeCard({ state, onResume }: { state: RecallState; onResume: () => void }) {
+  const target = state.reconstruction?.target || titleLabel(state.current) || "현재 작업";
+  const nextAction = state.reconstruction?.nextAction || state.explanation?.nextAction || "현재 창에서 이어서 확인하기";
   const image = state.contextImage;
   return (
-    <div className={`context-visual ${image ? "has-image" : "is-abstract"}`}>
-      {image ? (
-        <img src={image.dataUrl} alt="사용자가 복원 순간에 허용한 창 미리보기" />
-      ) : (
-        <div className="memory-orbit" aria-hidden="true">
-          <i />
-          <i />
-          <i />
-        </div>
-      )}
-      <div className="visual-shade" />
-      <div className="visual-caption">
-        <span>{state.mode === "checkpoint" ? "저장된 창" : "현재 창"}</span>
-        <strong>{appLabel(state.current)}</strong>
-        <small>{titleLabel(state.current)}</small>
+    <section className="resume-card" aria-label="다시 시작할 지점">
+      <div className="resume-kicker">
+        <span><i />다시 시작할 곳</span>
+        {image && <small><Camera size={11} />1회 보기</small>}
       </div>
-      {image && (
-        <div className="vision-chip">
-          <Camera size={11} />
-          {state.mode === "checkpoint" ? "암호화됨" : "1회 보기"}
+      <h2 title={target}>{target}</h2>
+      <div className={`artifact-card ${image ? "has-image" : ""}`}>
+        {image && <img src={image.dataUrl} alt="사용자가 복원 순간에 허용한 창 미리보기" />}
+        <div>
+          <span>{state.mode === "checkpoint" ? "저장한 창" : "현재 창"}</span>
+          <b>{appLabel(state.current)}</b>
+          <small>{titleLabel(state.current)}</small>
         </div>
-      )}
-    </div>
+      </div>
+      <div className="next-step">
+        <span>다음 한 단계</span>
+        <p>{nextAction}</p>
+      </div>
+      <button className="primary-action resume-action" onClick={onResume}>
+        이 지점에서 계속 <ArrowRight size={17} />
+      </button>
+    </section>
   );
 }
 
@@ -276,8 +308,6 @@ function RecallPanel() {
   };
   const remember = async () => setCheckpoint(await api.remember());
   const heading = state?.reconstruction?.summary || state?.explanation?.answer;
-  const nextAction =
-    state?.reconstruction?.nextAction || state?.explanation?.nextAction;
   const hasContext = Boolean(
     state?.current || state?.explanation?.chain.length || state?.checkpoint,
   );
@@ -286,6 +316,7 @@ function RecallPanel() {
       ? settings?.modelProvider === "vertex-gcloud" ? "QA 복원" : "AI 복원"
       : "로컬 복원";
   const saved = state?.checkpoint ?? checkpoint?.latest;
+  const evidenceCount = state?.explanation?.evidenceIds.length ?? 0;
 
   return (
     <main className="recall-shell">
@@ -316,20 +347,17 @@ function RecallPanel() {
           <motion.section key={`${state?.mode}-${state?.updatedAt}`} className="recall-layout" initial={showcase ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             <div className="recall-copy">
               <div className="result-label">
-                <i /> {modelLabel}
+                <i /> 맥락 복원
                 <span>·</span>
                 {state?.mode === "checkpoint" ? moment(state.checkpoint?.createdAt) : "방금"}
+                {state?.explanation?.interrupted && <><span>·</span>방해 후 복귀</>}
               </div>
-              <h1>{heading || "이 창에서 하던 일을 이어가세요."}</h1>
-              <div className="current-window">
-                <span>{state?.mode === "checkpoint" ? "그때" : "현재"}</span>
-                <b>{appLabel(state?.current)}</b>
-                <em>{titleLabel(state?.current)}</em>
-              </div>
-              <EvidenceChain state={state!} />
+              <h1>{heading || "멈춘 작업을 되찾았어요."}</h1>
+              <OriginCard state={state!} />
+              <EvidenceTrail state={state!} />
             </div>
             <aside className="recall-aside">
-              <ContextVisual state={state!} />
+              <ResumeCard state={state!} onResume={dismiss} />
               {saved && state?.mode !== "checkpoint" && (
                 <button className="saved-context" onClick={() => void api.recall("saved")}>
                   <Bookmark size={14} />
@@ -340,12 +368,7 @@ function RecallPanel() {
             </aside>
             {state?.message && <p className="error-note">{state.message}</p>}
             <footer className="recall-footer">
-              <button className="primary-action" onClick={dismiss}>
-                <span className="action-label" title={nextAction || "이어서 하기"}>
-                  {nextAction || "이어서 하기"}
-                </span>
-                <ArrowRight size={17} />
-              </button>
+              <div className="grounding-note"><i /><b>{modelLabel}</b><span>실제 창 {evidenceCount || 1}개만 근거로 사용</span></div>
               <button className="memory-action" onClick={() => void remember()} disabled={checkpoint?.status === "saving"}>
                 {checkpoint?.status === "saving" ? <LoaderCircle className="spinner" size={15} /> : <Bookmark size={15} />}
                 {checkpoint?.status === "saving" ? "기억하는 중" : "여기 기억"}
