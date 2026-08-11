@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title id="title">Here app icon</title>
+  <!-- A focused cursor: the app brings people back to the exact place and reason. -->
+  <rect width="1024" height="1024" rx="232" fill="#14181d"/>
+  <rect x="126" y="126" width="772" height="772" rx="178" fill="#f5f1e8"/>
+  <path d="M314 312h396c32 0 58 26 58 58v284c0 32-26 58-58 58H547l-105 96v-96H314c-32 0-58-26-58-58V370c0-32 26-58 58-58Z" fill="#14181d"/>
+  <rect x="401" y="446" width="222" height="52" rx="26" fill="#f5f1e8"/>
+  <rect x="401" y="534" width="164" height="52" rx="26" fill="#f5f1e8"/>
+  <circle cx="696" cy="648" r="94" fill="#ff6b35" stroke="#f5f1e8" stroke-width="24"/>
+  <polygon points="652,638 686,672 744,604 762,622 686,712 634,660" fill="#14181d"/>
+</svg>
