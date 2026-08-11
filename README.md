@@ -83,7 +83,7 @@ API 주소    https://llm.company.internal/v1
 
 [vLLM/OpenAI-compatible 연결 가이드 →](VLLM.md)
 
-### 업무 내용이 아니라 사용한 창만 기록합니다
+### 사용한 창 정보만 기록합니다
 
 | 기록 | 기록하지 않음 | 사용자 제어 |
 | --- | --- | --- |
