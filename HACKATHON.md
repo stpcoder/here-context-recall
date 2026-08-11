@@ -1,7 +1,7 @@
 # Here — SK 그룹 해커톤 제출 메모
 
 - 제품 페이지: https://stpcoder.github.io/here-context-recall/
-- 이미지 사용법: https://stpcoder.github.io/here-context-recall/manual/
+- 60초 빠른 시작: https://stpcoder.github.io/here-context-recall/manual/
 
 ## 한 줄
 
