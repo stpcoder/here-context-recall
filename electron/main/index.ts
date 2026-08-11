@@ -138,9 +138,9 @@ function makeRecall(): BrowserWindow {
   recallWindow = createWindow(
     {
       width: 820,
-      height: 700,
+      height: 580,
       minWidth: 620,
-      minHeight: 520,
+      minHeight: 560,
       frame: false,
       transparent: true,
       resizable: true,
