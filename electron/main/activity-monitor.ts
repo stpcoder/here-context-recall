@@ -2,6 +2,7 @@ import type {
   ActivityEvent,
   ActivityMonitorOptions,
   ActivityStats,
+  CaptureGapReason,
 } from "../shared/contracts";
 
 type WindowOwner = { name?: string; path?: string; processId?: number };
@@ -46,7 +47,10 @@ export const DEFAULT_EXCLUDED_APPS = [
 export const DEFAULT_REDACT_TITLE_APPS: string[] = [];
 
 const DEFAULT_RETENTION_MS = 10 * 60 * 1_000;
-const DEFAULT_POLL_MS = 1_000;
+const DEFAULT_POLL_MS = 500;
+const DEFAULT_MAX_EVENTS = 1_500;
+const DEFAULT_READ_TIMEOUT_MS = 1_500;
+const FAILURE_GAP_THRESHOLD = 3;
 const SENSITIVE_TITLE_PATTERNS = [
   "incognito",
   "inprivate",
@@ -81,10 +85,17 @@ function redactTitle(title: string | undefined): string | undefined {
   return "[Title hidden]";
 }
 
+type WindowObservation =
+  | { kind: "event"; event: ActivityEvent }
+  | { kind: "self" }
+  | { kind: "protected" };
+
 /** Polls native windows; it intentionally never observes keyboard or mouse content. */
 export class ActivityMonitor {
   private readonly pollIntervalMs: number;
   private readonly retentionMs: number;
+  private readonly maxEvents: number;
+  private readonly readTimeoutMs: number;
   private readonly excludedApps: string[];
   private readonly redactTitleForApps: string[];
   private readonly hereProcessId: number;
@@ -95,12 +106,25 @@ export class ActivityMonitor {
   private loadedReader?: WindowReader;
   private events: ActivityEvent[] = [];
   private timer?: ReturnType<typeof setInterval>;
+  private running = false;
   private paused = false;
-  private polling = false;
+  private pollPromise?: Promise<void>;
+  private samplesAttempted = 0;
+  private samplesObserved = 0;
+  private readFailures = 0;
+  private consecutiveReadFailures = 0;
+  private lastPollAt?: number;
+  private lastSuccessAt?: number;
+  private lastErrorAt?: number;
 
   constructor(options: ActivityMonitorOptions = {}, reader?: WindowReader) {
     this.pollIntervalMs = options.pollIntervalMs ?? DEFAULT_POLL_MS;
     this.retentionMs = options.retentionMs ?? DEFAULT_RETENTION_MS;
+    this.maxEvents = Math.max(20, options.maxEvents ?? DEFAULT_MAX_EVENTS);
+    this.readTimeoutMs = Math.max(
+      this.pollIntervalMs,
+      options.readTimeoutMs ?? DEFAULT_READ_TIMEOUT_MS,
+    );
     this.excludedApps = [
       ...DEFAULT_EXCLUDED_APPS,
       ...(options.excludedApps ?? []),
@@ -116,12 +140,15 @@ export class ActivityMonitor {
   }
 
   async start(): Promise<void> {
-    if (this.timer) return;
+    if (this.running) return;
+    this.running = true;
     await this.poll();
-    this.timer = setInterval(() => void this.poll(), this.pollIntervalMs);
+    if (this.running)
+      this.timer = setInterval(() => void this.poll(), this.pollIntervalMs);
   }
 
   stop(): void {
+    this.running = false;
     if (this.timer) clearInterval(this.timer);
     this.timer = undefined;
   }
@@ -148,14 +175,20 @@ export class ActivityMonitor {
         timestamp: Date.now(),
         platform: this.platform,
       });
+      await this.poll();
     }
     return this.stats();
   }
 
+  /** Forces one fresh foreground-window sample before a user-triggered recall. */
+  async snapshot(): Promise<ActivityEvent | undefined> {
+    await this.poll();
+    return this.current();
+  }
+
   current(): ActivityEvent | undefined {
-    return [...this.events]
-      .reverse()
-      .find((event) => event.kind === "window-focus");
+    const latest = this.events.at(-1);
+    return latest?.kind === "window-focus" ? latest : undefined;
   }
 
   recent(since = Date.now() - this.retentionMs): ActivityEvent[] {
@@ -171,12 +204,23 @@ export class ActivityMonitor {
     this.prune(Date.now());
     const current = this.current();
     return {
-      running: Boolean(this.timer),
+      running: this.running,
       paused: this.paused,
+      health: this.health(),
+      captureMode: "polling",
+      pollIntervalMs: this.pollIntervalMs,
+      maxEvents: this.maxEvents,
       eventCount: this.events.length,
       retentionMs: this.retentionMs,
+      samplesAttempted: this.samplesAttempted,
+      samplesObserved: this.samplesObserved,
+      readFailures: this.readFailures,
+      consecutiveReadFailures: this.consecutiveReadFailures,
       current,
-      lastCapturedAt: current?.timestamp,
+      lastCapturedAt: current?.lastSeenAt ?? current?.timestamp,
+      lastPollAt: this.lastPollAt,
+      lastSuccessAt: this.lastSuccessAt,
+      lastErrorAt: this.lastErrorAt,
     };
   }
 
@@ -185,28 +229,57 @@ export class ActivityMonitor {
     return () => this.listeners.delete(listener);
   }
 
-  private async poll(): Promise<void> {
+  private poll(): Promise<void> {
     if (
       this.paused ||
-      this.polling ||
       (this.platform !== "win32" && this.platform !== "darwin")
     )
-      return;
-    this.polling = true;
+      return Promise.resolve();
+    if (this.pollPromise) return this.pollPromise;
+    this.pollPromise = this.performPoll().finally(() => {
+      this.pollPromise = undefined;
+    });
+    return this.pollPromise;
+  }
+
+  private async performPoll(): Promise<void> {
+    const startedAt = Date.now();
+    this.samplesAttempted += 1;
+    this.lastPollAt = startedAt;
     try {
-      const active = await this.getActiveWindow();
-      if (!active) return;
-      let event = this.toEvent(active);
+      const active = await withTimeout(
+        this.getActiveWindow(),
+        this.readTimeoutMs,
+      );
+      if (!active) {
+        this.markReadFailure(startedAt);
+        return;
+      }
+      this.samplesObserved += 1;
+      this.consecutiveReadFailures = 0;
+      this.lastSuccessAt = Date.now();
+      let observation = this.observeWindow(active);
       // On macOS an always-on-top, non-focusable bubble can still be returned
       // as the first window. Only in that self-owned case, look directly
       // behind Here instead of mistaking an excluded/sensitive app for work.
-      if (!event && this.isHereWindow(active)) {
+      if (observation.kind === "self" && this.platform === "darwin") {
         const windows = await this.getOpenWindows();
-        event = windows.map((window) => this.toEvent(window)).find(Boolean);
+        const behind = windows
+          .map((window) => this.observeWindow(window))
+          .find((candidate) => candidate.kind === "event");
+        if (behind) observation = behind;
       }
-      if (!event) return;
-      const current = this.current();
+      if (observation.kind === "self") return;
+      if (observation.kind === "protected") {
+        this.recordGap("protected", Date.now());
+        return;
+      }
+      const event = observation.event;
+      const latest = this.events.at(-1);
+      const current = latest?.kind === "window-focus" ? latest : undefined;
       if (current && this.sameWindow(current, event)) {
+        current.lastSeenAt = event.timestamp;
+        current.sampleCount = (current.sampleCount ?? 1) + 1;
         if (!sameBounds(current.bounds, event.bounds)) {
           current.bounds = event.bounds;
           this.listeners.forEach((listener) => listener(current));
@@ -216,8 +289,7 @@ export class ActivityMonitor {
       this.record(event);
     } catch {
       // Permission denial or a transient native-window failure must not crash Here.
-    } finally {
-      this.polling = false;
+      this.markReadFailure(startedAt);
     }
   }
 
@@ -269,52 +341,45 @@ export class ActivityMonitor {
     return load("get-windows");
   }
 
-  private toEvent(window: NativeWindow): ActivityEvent | undefined {
+  private observeWindow(window: NativeWindow): WindowObservation {
     const appName = limited(window.owner?.name, 200) ?? "Unknown app";
     const processPath = limited(window.owner?.path ?? window.path, 1_024);
     const processId = window.owner?.processId ?? window.processId;
     const app = normalized(appName);
-    if (
-      processId === this.hereProcessId ||
-      app === "here" ||
-      app === "here." ||
-      matchesRule(appName, processPath, this.excludedApps)
-    )
-      return undefined;
+    if (processId === this.hereProcessId || app === "here" || app === "here.")
+      return { kind: "self" };
+    if (matchesRule(appName, processPath, this.excludedApps))
+      return { kind: "protected" };
     const rawTitle = limited(window.title, 512);
     if (
       SENSITIVE_TITLE_PATTERNS.some((pattern) =>
         normalized(rawTitle).includes(pattern),
       )
     )
-      return undefined;
+      return { kind: "protected" };
     const titleRedacted = matchesRule(
       appName,
       processPath,
       this.redactTitleForApps,
     );
+    const timestamp = Date.now();
     return {
-      id: this.id(),
-      kind: "window-focus",
-      timestamp: Date.now(),
-      appName,
-      title: titleRedacted ? redactTitle(rawTitle) : rawTitle,
-      processId,
-      platform: this.platform,
-      titleRedacted: titleRedacted || undefined,
-      windowId: window.id === undefined ? undefined : String(window.id),
-      bounds: normalizeBounds(window.contentBounds ?? window.bounds),
+      kind: "event",
+      event: {
+        id: this.id(),
+        kind: "window-focus",
+        timestamp,
+        lastSeenAt: timestamp,
+        sampleCount: 1,
+        appName,
+        title: titleRedacted ? redactTitle(rawTitle) : rawTitle,
+        processId,
+        platform: this.platform,
+        titleRedacted: titleRedacted || undefined,
+        windowId: window.id === undefined ? undefined : String(window.id),
+        bounds: normalizeBounds(window.contentBounds ?? window.bounds),
+      },
     };
-  }
-
-  private isHereWindow(window: NativeWindow): boolean {
-    const appName = normalized(window.owner?.name);
-    const processId = window.owner?.processId ?? window.processId;
-    return (
-      processId === this.hereProcessId ||
-      appName === "here" ||
-      appName === "here."
-    );
   }
 
   private sameWindow(left: ActivityEvent, right: ActivityEvent): boolean {
@@ -335,13 +400,72 @@ export class ActivityMonitor {
   private prune(now: number): void {
     const cutoff = now - this.retentionMs;
     const firstKept = this.events.findIndex(
-      (event) => event.timestamp >= cutoff,
+      (event) => (event.lastSeenAt ?? event.timestamp) >= cutoff,
     );
     this.events = firstKept === -1 ? [] : this.events.slice(firstKept);
+    if (this.events.length > this.maxEvents)
+      this.events = this.events.slice(-this.maxEvents);
+  }
+
+  private recordGap(reason: CaptureGapReason, timestamp: number): void {
+    const latest = this.events.at(-1);
+    if (latest?.kind === "capture-gap" && latest.gapReason === reason) {
+      latest.lastSeenAt = timestamp;
+      latest.sampleCount = (latest.sampleCount ?? 1) + 1;
+      return;
+    }
+    this.record({
+      id: this.id(),
+      kind: "capture-gap",
+      gapReason: reason,
+      timestamp,
+      lastSeenAt: timestamp,
+      sampleCount: 1,
+      platform: this.platform,
+    });
+  }
+
+  private markReadFailure(at: number): void {
+    this.readFailures += 1;
+    this.consecutiveReadFailures += 1;
+    this.lastErrorAt = at;
+    if (this.consecutiveReadFailures === FAILURE_GAP_THRESHOLD)
+      this.recordGap("unavailable", at);
+  }
+
+  private health(): ActivityStats["health"] {
+    if (!this.running) return "stopped";
+    if (this.paused) return "paused";
+    const staleAfter = Math.max(5_000, this.pollIntervalMs * 6);
+    if (
+      this.consecutiveReadFailures >= FAILURE_GAP_THRESHOLD ||
+      (this.lastSuccessAt !== undefined &&
+        Date.now() - this.lastSuccessAt > staleAfter)
+    )
+      return "degraded";
+    return "healthy";
   }
 
   private id(): string {
     return `activity_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          const error = new Error("Window reader timed out.");
+          error.name = "TimeoutError";
+          reject(error);
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

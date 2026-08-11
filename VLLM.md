@@ -39,8 +39,11 @@ URL과 Model ID, token이 적용됩니다.
 
 ## 런타임 동작
 
-- 요청은 `stream: false`, `temperature: 0`, 최대 768 output tokens로 보냅니다.
+- 요청은 `stream: false`, `temperature: 0`, 최대 320 output tokens로 보냅니다.
 - 전체 모델 요청 제한 시간은 30초입니다.
+- 동일 근거는 2분간 재사용하고 동시에 눌린 요청은 하나로 합칩니다.
+- 자동 복원은 분당 최대 4 HTTP 요청, 보수적으로 추정한 12,000 TPM 안에서만
+  실행합니다. 호환성 재시도도 이 예산에 포함되며 초과 시 로컬 결과를 유지합니다.
 - reasoning 모델의 `reasoning_content`, 문자열 응답, text content parts를 모두
   처리합니다.
 - 코드 펜스·`<think>` 블록·JSON 앞뒤 설명이 있어도 안전하게 JSON 객체를

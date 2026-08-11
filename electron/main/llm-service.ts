@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -73,8 +74,11 @@ const visionSchema = z.object({
 const MAX_RESPONSE_BYTES = 1_000_000;
 const MAX_ERROR_BYTES = 16_384;
 const MODEL_DISCOVERY_TIMEOUT_MS = 5_000;
-const OPENAI_RECONSTRUCTION_MAX_TOKENS = 768;
-const OPENAI_CONNECTION_MAX_TOKENS = 384;
+const OPENAI_RECONSTRUCTION_MAX_TOKENS = 320;
+const OPENAI_CONNECTION_MAX_TOKENS = 256;
+const DEFAULT_RUNTIME_REQUESTS_PER_MINUTE = 4;
+const DEFAULT_RUNTIME_TOKENS_PER_MINUTE = 12_000;
+const DEFAULT_CACHE_TTL_MS = 2 * 60 * 1_000;
 const execFileAsync = promisify(execFile);
 let cachedGcloudToken: { value: string; expiresAt: number } | undefined;
 let cachedGcloudProject: { value: string; expiresAt: number } | undefined;
@@ -101,6 +105,22 @@ export type LlmServiceOptions = {
   timeoutMs?: number;
   getVertexAccessToken?: () => Promise<string>;
   getVertexProject?: () => Promise<string>;
+  now?: () => number;
+  runtimeBudget?: Partial<LlmRuntimeBudget>;
+};
+
+export type LlmRuntimeBudget = {
+  maxRequestsPerMinute: number;
+  maxEstimatedTokensPerMinute: number;
+  cacheTtlMs: number;
+};
+
+export type LlmRuntimeStats = {
+  requestsInWindow: number;
+  estimatedTokensInWindow: number;
+  cacheHits: number;
+  inflightHits: number;
+  budgetFallbacks: number;
 };
 
 export type OpenAiOutputMode =
@@ -132,8 +152,22 @@ export class LlmService {
   private readonly timeoutMs: number;
   private readonly getVertexAccessToken: () => Promise<string>;
   private readonly getVertexProject: () => Promise<string>;
+  private readonly now: () => number;
+  private readonly runtimeBudget: LlmRuntimeBudget;
   private readonly preferredOutputModes = new Map<string, OpenAiOutputMode>();
   private readonly visionSupport = new Map<string, boolean>();
+  private readonly reconstructionCache = new Map<
+    string,
+    { expiresAt: number; value: Reconstruction }
+  >();
+  private readonly inflightReconstructions = new Map<
+    string,
+    Promise<Reconstruction>
+  >();
+  private runtimeUsage: Array<{ at: number; estimatedTokens: number }> = [];
+  private cacheHits = 0;
+  private inflightHits = 0;
+  private budgetFallbacks = 0;
 
   constructor(options: LlmServiceOptions) {
     this.getConfiguration = options.getConfiguration;
@@ -142,6 +176,31 @@ export class LlmService {
     this.getVertexAccessToken =
       options.getVertexAccessToken ?? defaultGcloudAccessToken;
     this.getVertexProject = options.getVertexProject ?? defaultGcloudProject;
+    this.now = options.now ?? Date.now;
+    this.runtimeBudget = {
+      maxRequestsPerMinute:
+        options.runtimeBudget?.maxRequestsPerMinute ??
+        DEFAULT_RUNTIME_REQUESTS_PER_MINUTE,
+      maxEstimatedTokensPerMinute:
+        options.runtimeBudget?.maxEstimatedTokensPerMinute ??
+        DEFAULT_RUNTIME_TOKENS_PER_MINUTE,
+      cacheTtlMs:
+        options.runtimeBudget?.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS,
+    };
+  }
+
+  runtimeStats(): LlmRuntimeStats {
+    this.pruneRuntimeUsage();
+    return {
+      requestsInWindow: this.runtimeUsage.length,
+      estimatedTokensInWindow: this.runtimeUsage.reduce(
+        (sum, entry) => sum + entry.estimatedTokens,
+        0,
+      ),
+      cacheHits: this.cacheHits,
+      inflightHits: this.inflightHits,
+      budgetFallbacks: this.budgetFallbacks,
+    };
   }
 
   async testConnection(
@@ -280,25 +339,58 @@ export class LlmService {
     if (safeEvidence.length === 0) return localFallback([], current);
     try {
       const config = await this.getValidConfiguration();
-      const result =
-        provider(config) === "vertex-gcloud"
-          ? await this.reconstructVertex(
-              config,
-              safeEvidence,
-              current,
-              safeVision,
-            )
-          : await this.reconstructOpenAi(
-              config,
-              safeEvidence,
-              current,
-              safeVision,
-            );
-      assertEvidenceReferences(result.evidenceIds, safeEvidence);
-      return { ...result, source: "model" };
+      const cacheKey = reconstructionCacheKey(
+        config,
+        safeEvidence,
+        current,
+        safeVision,
+      );
+      const cached = this.reconstructionCache.get(cacheKey);
+      if (cached && cached.expiresAt > this.now()) {
+        this.cacheHits += 1;
+        return cached.value;
+      }
+      if (cached) this.reconstructionCache.delete(cacheKey);
+      const inflight = this.inflightReconstructions.get(cacheKey);
+      if (inflight) {
+        this.inflightHits += 1;
+        return await inflight;
+      }
+      const task = this.performReconstruction(
+        config,
+        safeEvidence,
+        current,
+        safeVision,
+      );
+      this.inflightReconstructions.set(cacheKey, task);
+      try {
+        const result = await task;
+        this.reconstructionCache.set(cacheKey, {
+          expiresAt: this.now() + this.runtimeBudget.cacheTtlMs,
+          value: result,
+        });
+        this.trimReconstructionCache();
+        return result;
+      } finally {
+        this.inflightReconstructions.delete(cacheKey);
+      }
     } catch {
       return localFallback(safeEvidence, current);
     }
+  }
+
+  private async performReconstruction(
+    config: LlmConfiguration,
+    evidence: Evidence[],
+    current?: ReconstructionCurrent,
+    vision?: VisionContext,
+  ): Promise<Reconstruction> {
+    const result =
+      provider(config) === "vertex-gcloud"
+        ? await this.reconstructVertex(config, evidence, current, vision)
+        : await this.reconstructOpenAi(config, evidence, current, vision);
+    assertEvidenceReferences(result.evidenceIds, evidence);
+    return { ...result, source: "model" };
   }
 
   private async reconstructOpenAi(
@@ -314,6 +406,7 @@ export class LlmService {
         current,
         vision,
         OPENAI_RECONSTRUCTION_MAX_TOKENS,
+        true,
       )
     ).reconstruction;
   }
@@ -324,6 +417,7 @@ export class LlmService {
     current: ReconstructionCurrent | undefined,
     vision: VisionContext | undefined,
     maxTokens: number,
+    budgeted = false,
   ): Promise<OpenAiReconstructionResult> {
     const capabilityKey = this.openAiCapabilityKey(config);
     const canTryVision =
@@ -340,6 +434,10 @@ export class LlmService {
 
     for (const attempt of attempts) {
       if (attempt.vision && skipRemainingVision) continue;
+      if (budgeted)
+        this.reserveRuntimeBudget(
+          estimateRequestTokens(evidence, current, maxTokens, attempt.vision),
+        );
       const response = await this.fetchWithTimeout(
         openAiApiUrl(config.endpoint, "chat/completions"),
         {
@@ -449,6 +547,14 @@ export class LlmService {
     current?: ReconstructionCurrent,
     vision?: VisionContext,
   ): Promise<z.infer<typeof reconstructionSchema>> {
+    this.reserveRuntimeBudget(
+      estimateRequestTokens(
+        evidence,
+        current,
+        OPENAI_RECONSTRUCTION_MAX_TOKENS,
+        vision,
+      ),
+    );
     const parts: Array<Record<string, unknown>> = [
       {
         text: JSON.stringify({ evidence, current }),
@@ -614,6 +720,41 @@ export class LlmService {
       });
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  private reserveRuntimeBudget(estimatedTokens: number): void {
+    this.pruneRuntimeUsage();
+    const tokenTotal = this.runtimeUsage.reduce(
+      (sum, entry) => sum + entry.estimatedTokens,
+      0,
+    );
+    if (
+      this.runtimeUsage.length >= this.runtimeBudget.maxRequestsPerMinute ||
+      tokenTotal + estimatedTokens >
+        this.runtimeBudget.maxEstimatedTokensPerMinute
+    ) {
+      this.budgetFallbacks += 1;
+      throw new Error("Here runtime model budget reached.");
+    }
+    this.runtimeUsage.push({ at: this.now(), estimatedTokens });
+  }
+
+  private pruneRuntimeUsage(): void {
+    const cutoff = this.now() - 60_000;
+    this.runtimeUsage = this.runtimeUsage.filter((entry) => entry.at > cutoff);
+  }
+
+  private trimReconstructionCache(): void {
+    const now = this.now();
+    for (const [key, entry] of this.reconstructionCache)
+      if (entry.expiresAt <= now) this.reconstructionCache.delete(key);
+    while (this.reconstructionCache.size > 64) {
+      const oldest = this.reconstructionCache.keys().next().value as
+        | string
+        | undefined;
+      if (!oldest) break;
+      this.reconstructionCache.delete(oldest);
     }
   }
 }
@@ -1022,6 +1163,51 @@ function sanitizeDiagnostic(
     .trim()
     .slice(0, maxLength);
   return sanitized || undefined;
+}
+
+function reconstructionCacheKey(
+  config: LlmConfiguration,
+  evidence: Evidence[],
+  current?: ReconstructionCurrent,
+  vision?: VisionContext,
+): string {
+  const visionDigest = vision
+    ? createHash("sha256").update(vision.dataBase64).digest("hex")
+    : undefined;
+  return createHash("sha256")
+    .update(
+      JSON.stringify({
+        provider: provider(config),
+        endpoint: config.endpoint,
+        model: config.model,
+        evidence,
+        current,
+        vision: vision
+          ? { mimeType: vision.mimeType, digest: visionDigest }
+          : undefined,
+      }),
+    )
+    .digest("hex");
+}
+
+function estimateRequestTokens(
+  evidence: Evidence[],
+  current: ReconstructionCurrent | undefined,
+  maxOutputTokens: number,
+  vision?: VisionContext,
+): number {
+  // A conservative local estimate is enough for an application-side guard.
+  // Base64 bytes are not counted as text tokens by multimodal servers; reserve
+  // a fixed image allowance instead.
+  const inputCharacters = JSON.stringify({ evidence, current }).length;
+  const promptAllowance = 320;
+  const imageAllowance = vision ? 1_200 : 0;
+  return (
+    Math.ceil(inputCharacters / 3) +
+    promptAllowance +
+    imageAllowance +
+    maxOutputTokens
+  );
 }
 
 function validateEvidence(evidence: Evidence[]): Evidence[] {

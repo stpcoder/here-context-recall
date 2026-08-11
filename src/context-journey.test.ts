@@ -27,6 +27,8 @@ it("labels the observed chronology as before, opened, away, and now", () => {
     explanation: {
       answer: "Q3 예산안 숫자를 확인하던 중이었습니다.",
       interrupted: true,
+      confidence: "high",
+      boundary: { reason: "return-chain", at: events[2].timestamp },
       evidenceIds: events.map(({ id }) => id),
       chain: events.map((item, index) => ({
         eventId: item.id,

@@ -109,6 +109,8 @@ export function createShowcaseApi(): HereDesktopApi {
     origin: "Microsoft Teams — 재무팀 · Q3 예산안 숫자 확인 부탁드립니다",
     nextAction: "비용 증감 열의 합계 확인",
     interrupted: true,
+    confidence: "high" as const,
+    boundary: { reason: "return-chain" as const, at: events[2].timestamp },
     evidenceIds: events.map(({ id }) => id),
     chain: [
       {
@@ -208,8 +210,16 @@ export function createShowcaseApi(): HereDesktopApi {
   const stats: ActivityStats = {
     running: true,
     paused: false,
+    health: "healthy",
+    captureMode: "polling",
+    pollIntervalMs: 500,
+    maxEvents: 1_500,
     eventCount: events.length,
     retentionMs: 600_000,
+    samplesAttempted: 84,
+    samplesObserved: 84,
+    readFailures: 0,
+    consecutiveReadFailures: 0,
     current: events[4],
     lastCapturedAt: events[4].timestamp,
   };

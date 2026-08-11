@@ -82,7 +82,7 @@ describe("LlmService", () => {
     );
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({
       model: "qwen",
-      max_tokens: 384,
+      max_tokens: 256,
       response_format: { type: "json_schema" },
     });
     expect(fetch.mock.calls[0][1].headers).toMatchObject({
@@ -180,11 +180,70 @@ describe("LlmService", () => {
       .mockResolvedValueOnce(reconstructionResponse(["e1", "e2"]));
     const service = new LlmService({ getConfiguration: () => config, fetch });
     await service.reconstruct(evidence);
-    await service.reconstruct(evidence);
+    await service.reconstruct(
+      evidence.map((item, index) =>
+        index === 1 ? { ...item, title: "result-v2.xlsx" } : item,
+      ),
+    );
     expect(fetch).toHaveBeenCalledTimes(3);
     expect(JSON.parse(fetch.mock.calls[2][1].body).response_format.type).toBe(
       "json_object",
     );
+  });
+
+  it("caches an identical reconstruction instead of spending another model call", async () => {
+    const fetch = vi.fn().mockResolvedValue(reconstructionResponse(["e1", "e2"]));
+    const service = new LlmService({ getConfiguration: () => config, fetch });
+    const first = await service.reconstruct(evidence);
+    const second = await service.reconstruct(evidence);
+    expect(first.source).toBe("model");
+    expect(second).toEqual(first);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(service.runtimeStats()).toMatchObject({
+      requestsInWindow: 1,
+      cacheHits: 1,
+      inflightHits: 0,
+    });
+  });
+
+  it("coalesces concurrent recalls for the same evidence", async () => {
+    let resolveFetch: ((response: Response) => void) | undefined;
+    const fetch = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    const service = new LlmService({ getConfiguration: () => config, fetch });
+    const first = service.reconstruct(evidence);
+    const second = service.reconstruct(evidence);
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    resolveFetch?.(reconstructionResponse(["e1", "e2"]));
+    await expect(Promise.all([first, second])).resolves.toHaveLength(2);
+    expect(service.runtimeStats().inflightHits).toBe(1);
+  });
+
+  it("falls back locally when the one-minute request budget is exhausted", async () => {
+    const fetch = vi.fn().mockResolvedValue(reconstructionResponse(["e1", "e2"]));
+    const service = new LlmService({
+      getConfiguration: () => config,
+      fetch,
+      runtimeBudget: {
+        maxRequestsPerMinute: 1,
+        maxEstimatedTokensPerMinute: 10_000,
+        cacheTtlMs: 120_000,
+      },
+    });
+    expect((await service.reconstruct(evidence)).source).toBe("model");
+    const changed = evidence.map((item, index) =>
+      index === 1 ? { ...item, title: "another-result.xlsx" } : item,
+    );
+    expect((await service.reconstruct(changed)).source).toBe("fallback");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(service.runtimeStats()).toMatchObject({
+      requestsInWindow: 1,
+      budgetFallbacks: 1,
+    });
   });
 
   it("recovers from successful but malformed responses and parses text parts", async () => {

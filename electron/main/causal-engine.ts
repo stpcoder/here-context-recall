@@ -5,25 +5,32 @@ import type {
   CausalStep,
 } from "../shared/contracts";
 
-const WINDOW_EVENT = (event: ActivityEvent): boolean =>
+const MAX_CHAIN_STEPS = 5;
+const INACTIVITY_BOUNDARY_MS = 4 * 60 * 1_000;
+
+const isWindowEvent = (event: ActivityEvent): boolean =>
   event.kind === "window-focus";
 
 function label(event: ActivityEvent): string {
+  if (event.kind === "capture-gap")
+    return event.gapReason === "protected"
+      ? "보호된 창 — 내용 기록 안 함"
+      : "확인할 수 없는 구간 — 내용 기록 안 함";
   const app = event.appName ?? "Unknown app";
   return event.title ? `${app} — ${event.title}` : app;
 }
 
 function sameTarget(left: ActivityEvent, right: ActivityEvent): boolean {
-  if (!left.appName || !right.appName || left.appName !== right.appName)
-    return false;
+  if (!left.appName || !right.appName) return false;
+  if (normalizeTitle(left.appName) !== normalizeTitle(right.appName)) return false;
+
+  // A single browser or Office HWND can host several tabs/documents. Visible
+  // titles therefore take precedence over the native handle when available.
+  if (!left.titleRedacted && !right.titleRedacted && left.title && right.title)
+    return normalizeTitle(left.title) === normalizeTitle(right.title);
   if (left.windowId && right.windowId) return left.windowId === right.windowId;
   // For redacted titles, the app identity is the only privacy-preserving signal.
-  if (left.titleRedacted || right.titleRedacted) return true;
-  return Boolean(
-    left.title &&
-      right.title &&
-      normalizeTitle(left.title) === normalizeTitle(right.title),
-  );
+  return Boolean(left.titleRedacted || right.titleRedacted);
 }
 
 function normalizeTitle(value: string): string {
@@ -35,39 +42,53 @@ function normalizeTitle(value: string): string {
 }
 
 /**
- * Turns focus observations into a compact explanation.  It does not invent
- * user intent: every statement maps to an event id returned as evidence.
+ * Selects a bounded, rule-based work segment before any model is called.
+ * Human pause/resume is a hard boundary, a long observation gap is a soft
+ * boundary, and an observed A → non-A → A return can bridge that soft gap.
  */
 export function explainCausalChain(query: CausalQuery): CausalExplanation {
-  const events = query.events
-    .filter(WINDOW_EVENT)
-    .sort((a, b) => a.timestamp - b.timestamp);
-  const current = query.current ?? events.at(-1);
-  if (!current) {
-    return {
-      answer: "아직 관측된 창이 없습니다.",
-      chain: [],
-      evidenceIds: [],
-      interrupted: false,
-    };
-  }
+  const events = [...query.events].sort((a, b) => a.timestamp - b.timestamp);
+  const latest = events.at(-1);
+  const current =
+    query.current ?? (latest?.kind === "window-focus" ? latest : undefined);
+  if (!current) return emptyExplanation();
 
-  let currentIndex = -1;
-  for (let index = events.length - 1; index >= 0; index -= 1) {
-    if (events[index].id === current.id) {
-      currentIndex = index;
-      break;
+  const end = findEventIndex(events, current);
+  if (end < 0) events.push(current);
+  const currentIndex = end < 0 ? events.length - 1 : end;
+  const explicitBoundary = findExplicitBoundary(events, currentIndex);
+  const minimumIndex = explicitBoundary === undefined ? 0 : explicitBoundary + 1;
+  const returnIndex = findReturn(events, currentIndex, current, minimumIndex);
+
+  let segmentStart = minimumIndex;
+  let boundary: CausalExplanation["boundary"] = explicitBoundary === undefined
+    ? { reason: "recent-window" }
+    : { reason: "explicit-resume", at: events[explicitBoundary].timestamp };
+  if (returnIndex !== undefined) {
+    segmentStart = minimumIndex;
+    boundary = { reason: "return-chain", at: events[returnIndex].timestamp };
+  } else {
+    const inactivityStart = findInactivityBoundary(
+      events,
+      currentIndex,
+      minimumIndex,
+    );
+    if (inactivityStart !== undefined) {
+      segmentStart = inactivityStart;
+      boundary = { reason: "inactivity", at: events[inactivityStart].timestamp };
     }
   }
-  const end = currentIndex >= 0 ? currentIndex : events.length - 1;
-  const returnIndex = findReturn(events, end, current);
-  const selectedIndexes = selectIndexes(events, end, returnIndex);
-  const selected = selectedIndexes.map((index) => events[index]);
 
-  const chain: CausalStep[] = selected.map((event, index) => {
-    const actualIndex = selectedIndexes[index];
+  const selectedIndexes = selectIndexes(
+    events,
+    currentIndex,
+    segmentStart,
+    returnIndex,
+  );
+  const chain: CausalStep[] = selectedIndexes.map((actualIndex) => {
+    const event = events[actualIndex];
     const role: CausalStep["role"] =
-      actualIndex === end
+      actualIndex === currentIndex
         ? returnIndex !== undefined
           ? "return"
           : "target"
@@ -81,14 +102,30 @@ export function explainCausalChain(query: CausalQuery): CausalExplanation {
       role,
     };
   });
-  const originEvent =
-    returnIndex === undefined ? selected.at(-2) : events[returnIndex];
+  const originEvent = returnIndex === undefined
+    ? selectedIndexes
+        .slice(0, -1)
+        .reverse()
+        .map((index) => events[index])
+        .find(isWindowEvent)
+    : events[returnIndex];
   const interrupted = returnIndex !== undefined;
   const answer = interrupted
-    ? `현재 ${label(current)} 창으로 다시 돌아왔습니다. 중간에 다른 앱 전환이 있었습니다.`
+    ? `현재 ${label(current)} 창으로 다시 돌아왔습니다. 중간에 다른 창 전환이 있었습니다.`
     : originEvent
       ? `현재 ${label(current)} 창은 직전 ${label(originEvent)} 뒤에 열렸습니다.`
       : `현재 ${label(current)} 창이 관측되었습니다.`;
+  const focusCount = selectedIndexes.filter((index) => isWindowEvent(events[index])).length;
+  const hasObservedInterruption =
+    returnIndex !== undefined &&
+    events
+      .slice(returnIndex + 1, currentIndex)
+      .some((event) => event.kind === "window-focus");
+  const confidence: CausalExplanation["confidence"] = hasObservedInterruption
+    ? "high"
+    : focusCount >= 2
+      ? "medium"
+      : "low";
 
   return {
     answer,
@@ -97,44 +134,97 @@ export function explainCausalChain(query: CausalQuery): CausalExplanation {
     chain,
     evidenceIds: chain.map((step) => step.eventId),
     interrupted,
+    confidence,
+    boundary,
   };
+}
+
+function emptyExplanation(): CausalExplanation {
+  return {
+    answer: "아직 관측된 창이 없습니다.",
+    chain: [],
+    evidenceIds: [],
+    interrupted: false,
+    confidence: "low",
+    boundary: { reason: "recent-window" },
+  };
+}
+
+function findEventIndex(events: ActivityEvent[], current: ActivityEvent): number {
+  for (let index = events.length - 1; index >= 0; index -= 1)
+    if (events[index].id === current.id) return index;
+  return -1;
+}
+
+function findExplicitBoundary(
+  events: ActivityEvent[],
+  end: number,
+): number | undefined {
+  for (let index = end - 1; index >= 0; index -= 1)
+    if (events[index].kind === "monitor-resumed") return index;
+  return undefined;
+}
+
+function findInactivityBoundary(
+  events: ActivityEvent[],
+  end: number,
+  minimum: number,
+): number | undefined {
+  for (let index = end; index > minimum; index -= 1) {
+    const previous = events[index - 1];
+    const previousEnd = previous.lastSeenAt ?? previous.timestamp;
+    if (events[index].timestamp - previousEnd >= INACTIVITY_BOUNDARY_MS)
+      return index;
+  }
+  return undefined;
 }
 
 function selectIndexes(
   events: ActivityEvent[],
   end: number,
+  start: number,
   returnIndex: number | undefined,
 ): number[] {
-  if (returnIndex === undefined) {
-    return Array.from(
-      { length: Math.min(5, end + 1) },
-      (_, offset) => end - Math.min(4, end) + offset,
-    );
-  }
-  const indexes = new Set<number>();
-  if (returnIndex > 0) indexes.add(returnIndex - 1);
-  indexes.add(returnIndex);
-  const interruptionIndexes = Array.from(
-    { length: Math.max(0, end - returnIndex - 1) },
-    (_, offset) => returnIndex + 1 + offset,
+  const candidates = Array.from(
+    { length: Math.max(0, end - start + 1) },
+    (_, offset) => start + offset,
+  ).filter((index) =>
+    events[index].kind === "window-focus" || events[index].kind === "capture-gap",
   );
-  // Preserve the first and most recent interruption when many windows were crossed.
-  if (interruptionIndexes.length > 0) indexes.add(interruptionIndexes[0]);
-  if (interruptionIndexes.length > 1) indexes.add(interruptionIndexes.at(-1)!);
+  if (returnIndex === undefined) return candidates.slice(-MAX_CHAIN_STEPS);
+
+  const indexes = new Set<number>();
+  indexes.add(returnIndex);
+  const interruptions = candidates.filter(
+    (index) => index > returnIndex && index < end,
+  );
+  if (interruptions[0] !== undefined) indexes.add(interruptions[0]);
+  if (interruptions.length > 1) indexes.add(interruptions.at(-1)!);
   indexes.add(end);
-  return [...indexes].sort((a, b) => a - b).slice(-5);
+  const remainingContextSlots = Math.max(0, MAX_CHAIN_STEPS - indexes.size);
+  for (const index of candidates
+    .filter((candidate) => candidate < returnIndex)
+    .slice(-remainingContextSlots))
+    indexes.add(index);
+  return [...indexes].sort((a, b) => a - b).slice(-MAX_CHAIN_STEPS);
 }
 
 function findReturn(
   events: ActivityEvent[],
   end: number,
   current: ActivityEvent,
+  minimum: number,
 ): number | undefined {
-  // An interruption is only proven by A → non-A → A, never by app category guesses.
-  for (let index = end - 2; index >= 0; index -= 1) {
+  // An interruption is proven only by A → non-A/protected gap → A.
+  for (let index = end - 1; index >= minimum; index -= 1) {
+    if (events[index].kind !== "window-focus") continue;
     if (!sameTarget(events[index], current)) continue;
     if (
-      events.slice(index + 1, end).some((event) => !sameTarget(event, current))
+      events.slice(index + 1, end).some(
+        (event) =>
+          event.kind === "capture-gap" ||
+          (event.kind === "window-focus" && !sameTarget(event, current)),
+      )
     )
       return index;
   }

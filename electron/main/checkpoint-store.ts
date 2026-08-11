@@ -20,8 +20,15 @@ const boundsSchema = z.object({
 
 const activityEventSchema = z.object({
   id: z.string().min(1).max(160),
-  kind: z.enum(["window-focus", "monitor-paused", "monitor-resumed"]),
+  kind: z.enum([
+    "window-focus",
+    "capture-gap",
+    "monitor-paused",
+    "monitor-resumed",
+  ]),
   timestamp: z.number().int().positive(),
+  lastSeenAt: z.number().int().positive().optional(),
+  sampleCount: z.number().int().positive().optional(),
   appName: z.string().max(200).optional(),
   title: z.string().max(512).optional(),
   processId: z.number().int().nonnegative().optional(),
@@ -41,6 +48,7 @@ const activityEventSchema = z.object({
     "netbsd",
   ]),
   titleRedacted: z.boolean().optional(),
+  gapReason: z.enum(["protected", "unavailable"]).optional(),
 });
 
 const causalStepSchema = z.object({
@@ -57,6 +65,18 @@ const causalExplanationSchema = z.object({
   chain: z.array(causalStepSchema).max(8),
   evidenceIds: z.array(z.string().min(1).max(160)).max(20),
   interrupted: z.boolean(),
+  confidence: z.enum(["low", "medium", "high"]).default("low"),
+  boundary: z
+    .object({
+      reason: z.enum([
+        "explicit-resume",
+        "inactivity",
+        "return-chain",
+        "recent-window",
+      ]),
+      at: z.number().int().positive().optional(),
+    })
+    .default({ reason: "recent-window" }),
 });
 
 const reconstructionSchema = z.object({
@@ -80,6 +100,8 @@ const checkpointSchema = z.object({
       dataUrl: z.string().startsWith("data:image/").max(8_000_000),
       width: z.number().int().positive().max(4_096),
       height: z.number().int().positive().max(4_096),
+      capturedAt: z.number().int().positive().optional(),
+      sourceEventId: z.string().min(1).max(160).optional(),
     })
     .optional(),
 });

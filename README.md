@@ -83,6 +83,9 @@ Bearer token ••••••••••••
 
 화면 이미지는 기본으로 꺼져 있습니다. 사용자가 별도 옵션을 켜고 **왜 여기지?** 또는 **나중에 이어보기**를 직접 실행한 순간에만 활성 창 한 장을 사용합니다. 자동 타임라인은 앱 종료 시 사라지고, 사용자가 만든 체크포인트만 OS 보호 저장소로 암호화해 최대 12개·7일 보관합니다.
 
+500ms 수집 루프, 보호 구간, 작업 경계, 화면 crop과 모델 호출 예산의 실제
+계약은 [Windows 수집·작업 경계 설계](CAPTURE.md)에서 확인할 수 있습니다.
+
 ## 자동 빌드와 버전
 
 | Git 작업 | 자동 결과 |
@@ -143,6 +146,7 @@ Electron renderer에는 Node 권한이 없습니다. 네트워크 호출, API ke
 
 - [빠른 시작 가이드](https://stpcoder.github.io/here-context-recall/manual/)
 - [vLLM/OpenAI-compatible 운영 가이드](VLLM.md)
+- [Windows 수집·작업 경계·호출 예산](CAPTURE.md)
 - [해커톤 데모와 제출 문구](HACKATHON.md)
 - [최신 자동 빌드](https://github.com/stpcoder/here-context-recall/releases/tag/latest-build)
 
