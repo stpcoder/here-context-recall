@@ -23,6 +23,9 @@ const unfamiliarPhrases = [
   "Base URL",
   "Model ID",
   "Bearer token",
+  "아닙니다. ",
+  "대신에 ",
+  "넘어서서 ",
 ];
 
 describe("user-facing terminology", () => {
@@ -36,5 +39,14 @@ describe("user-facing terminology", () => {
     expect(app).toContain("최근 사용한 창 기록");
     expect(app).toContain("하던 일 찾기");
     expect(app).toContain("작업 저장");
+  });
+
+  it("keeps the landing page as prose instead of fragmented metric cards", () => {
+    const landing = readFileSync(resolve(process.cwd(), "site/index.html"), "utf8");
+    const styles = readFileSync(resolve(process.cwd(), "site/styles.css"), "utf8");
+    expect(landing).not.toContain("signal-strip");
+    expect(landing).not.toContain("<figcaption>");
+    expect(landing).not.toContain('class="section-kicker"');
+    expect(styles).not.toMatch(/object-fit:\s*cover/);
   });
 });
