@@ -35,14 +35,14 @@ export type VisionContext = {
 
 const reconstructionSchema = z
   .object({
-    summary: z.string().trim().min(1).max(600),
-    target: z.string().trim().min(1).max(300),
+    summary: z.string().trim().min(1).max(160),
+    target: z.string().trim().min(1).max(160),
     evidenceIds: z.array(z.string().min(1)).min(1).max(20),
     nextAction: z
       .string()
       .trim()
       .min(1)
-      .max(300)
+      .max(160)
       .nullish()
       .transform((value) => value ?? undefined),
   })
@@ -760,6 +760,8 @@ function systemPrompt(hasImage: boolean): string {
     "Use only the supplied activity evidence and the optional user-approved screenshot.",
     "Do not invent messages, values, files, intent, or actions that are not visible in those inputs.",
     "Return concise JSON in Korean with summary, target, evidenceIds, and one nextAction.",
+    "Write summary as a natural answer about the interrupted task, preferably naming the observed requester or topic; do not use the repetitive template 'X하려고 Y로 돌아왔어요'.",
+    "Keep summary under 60 Korean characters, target as the most precise visible work item or location, and nextAction as one short executable step without polite endings.",
     "Every evidenceIds value must be an ID from the supplied evidence.",
     hasImage
       ? "The image is context, not independent evidence; cite the matching window event ID."
@@ -773,8 +775,8 @@ function reconstructionJsonSchema(evidence: Evidence[]): Record<string, unknown>
     additionalProperties: false,
     required: ["summary", "target", "evidenceIds", "nextAction"],
     properties: {
-      summary: { type: "string", minLength: 1, maxLength: 600 },
-      target: { type: "string", minLength: 1, maxLength: 300 },
+      summary: { type: "string", minLength: 1, maxLength: 160 },
+      target: { type: "string", minLength: 1, maxLength: 160 },
       evidenceIds: {
         type: "array",
         minItems: 1,
@@ -785,7 +787,7 @@ function reconstructionJsonSchema(evidence: Evidence[]): Record<string, unknown>
       nextAction: {
         type: ["string", "null"],
         minLength: 1,
-        maxLength: 300,
+        maxLength: 160,
       },
     },
   };

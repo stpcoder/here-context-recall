@@ -11,6 +11,7 @@ export default defineConfig({
       input: {
         landing: resolve(__dirname, "site/index.html"),
         manual: resolve(__dirname, "site/manual/index.html"),
+        social: resolve(__dirname, "site/og.html"),
       },
     },
   },

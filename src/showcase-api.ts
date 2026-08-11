@@ -38,9 +38,9 @@ export function createShowcaseApi(): HereDesktopApi {
     event("return", 36, "Microsoft Excel", "result_0723.xlsx"),
   ];
   const explanation = {
-    answer: "A sample 결과를 확인하려고 result_0723.xlsx로 돌아왔어요.",
+    answer: "김OO님의 A sample 질문에 답하던 중이었어요.",
     origin: "Slack — 김OO · A sample 결과 확인 가능?",
-    nextAction: "Sample A / Condition B 확인 계속하기",
+    nextAction: "Condition B 결과 확인",
     interrupted: true,
     evidenceIds: events.map(({ id }) => id),
     chain: [
@@ -106,10 +106,10 @@ export function createShowcaseApi(): HereDesktopApi {
     evidence: [],
     explanation,
     reconstruction: {
-      summary: "Q3 예산안의 비용 차이를 확인하던 지점이에요.",
-      target: "Q3_budget_review.xlsx",
+      summary: "Q3 예산안의 비용 차이를 검토하던 중이었어요.",
+      target: "비용 증감 열",
       evidenceIds: ["sheet"],
-      nextAction: "비용 증감 열부터 이어서 확인하기",
+      nextAction: "비용 증감 열 확인",
       source: "model",
     },
   };
@@ -119,10 +119,10 @@ export function createShowcaseApi(): HereDesktopApi {
     current: events[4],
     explanation,
     reconstruction: {
-      summary: "A sample 결과를 확인하려고 이 파일로 돌아왔어요.",
-      target: "result_0723.xlsx",
+      summary: "김OO님의 A sample 질문에 답하던 중이었어요.",
+      target: "Sample A · Condition B",
       evidenceIds: events.map(({ id }) => id),
-      nextAction: "Sample A / Condition B 확인 계속하기",
+      nextAction: "Condition B 결과 확인",
       source: "model",
     },
     checkpoint,

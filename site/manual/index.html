@@ -3,116 +3,164 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f4f1e9" />
-    <meta name="description" content="Here 설치부터 맥락 복원, 여기 기억, 사내 vLLM 연결까지 화면으로 보는 사용법." />
+    <meta name="theme-color" content="#f5f5f5" />
+    <meta name="description" content="Here를 설치하고, 끊긴 업무를 복원하고, 사내 vLLM을 연결하는 60초 빠른 시작 가이드." />
+    <meta property="og:title" content="Here 빠른 시작 — 설정은 한 번, 복원은 한 번" />
+    <meta property="og:description" content="설치부터 왜 여기지?, 여기 기억, 사내 OpenAI-compatible 모델 연결까지." />
+    <meta property="og:image" content="https://stpcoder.github.io/here-context-recall/images/og-cover.png" />
     <link rel="icon" href="/here-mark.svg" />
     <link rel="stylesheet" href="../styles.css" />
     <link rel="stylesheet" href="./manual.css" />
-    <title>Here 사용법 — 화면으로 3분 만에 시작하기</title>
+    <noscript><style>.reveal{opacity:1!important;transform:none!important}</style></noscript>
+    <title>Here 빠른 시작 — 60초 만에 시작하기</title>
   </head>
   <body class="manual-page">
     <a class="skip-link" href="#manual-main">본문으로 바로가기</a>
     <header class="site-header is-scrolled" data-header>
-      <a class="brand" href="../"><img src="/here-mark.svg" alt="" /><span>here<b>.</b></span></a>
-      <nav aria-label="사용법 메뉴"><a href="#start">처음 설정</a><a href="#recall">맥락 복원</a><a href="#remember">여기 기억</a><a href="#model">사내 AI</a><a href="#privacy">개인정보</a></nav>
-      <a class="header-cta" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows용 다운로드 <span>↘</span></a>
+      <a class="brand" href="../" aria-label="Here 홈"><img src="/here-mark.svg" alt="" /><span>here</span></a>
+      <nav aria-label="빠른 시작 메뉴">
+        <a href="#allow">처음 설정</a>
+        <a href="#recall">맥락 복원</a>
+        <a href="#remember">여기 기억</a>
+        <a href="#model">사내 AI</a>
+      </nav>
+      <a class="header-cta" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows 받기 <span>↓</span></a>
       <button class="menu-button" type="button" aria-expanded="false" aria-label="메뉴 열기" data-menu><i></i><i></i></button>
     </header>
 
     <main id="manual-main">
       <section class="manual-hero section-shell">
-        <div class="manual-hero-copy reveal"><p class="eyebrow">HERE PRODUCT GUIDE · 2026</p><h1>화면을 보며,<br /><em>그대로.</em></h1><p>설치부터 “왜 여기지?”와 사내 업무 모델 연결까지.<br />빨간 표시만 따라가면 됩니다.</p><div class="hero-actions"><a class="button button-primary" href="#start">처음 설정부터 보기 <span>↓</span></a><a class="text-link" href="../">제품 소개로 돌아가기 <span>←</span></a></div></div>
-        <div class="guide-index reveal" data-delay="1"><p>빠른 이동</p><a href="#start"><span>01</span>창 흐름 켜기 <b>→</b></a><a href="#recall"><span>02</span>왜 여기지? <b>→</b></a><a href="#remember"><span>03</span>여기 기억 <b>→</b></a><a href="#model"><span>04</span>업무 모델 연결 <b>→</b></a><a href="#privacy"><span>05</span>개인정보 제어 <b>→</b></a></div>
+        <div class="manual-hero-copy reveal">
+          <p class="eyebrow">HERE · QUICK START</p>
+          <h1>설정은 한 번.<br /><em>복원은 한 번.</em></h1>
+          <p>창 흐름을 허용하고 평소처럼 일하세요.<br />필요한 순간에는 단축키 하나면 됩니다.</p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#allow">60초 시작 <span>↓</span></a>
+            <a class="text-link" href="../">제품 먼저 보기 <span>→</span></a>
+          </div>
+        </div>
+
+        <ol class="quick-check reveal" data-delay="1" aria-label="60초 시작 순서">
+          <li><span>01</span><div><strong>창 흐름 허용</strong><p>설정에서 한 번만 켜기</p></div></li>
+          <li><span>02</span><div><strong>평소처럼 일하기</strong><p>메신저 · 브라우저 · 문서</p></div></li>
+          <li><span>03</span><div><strong>단축키 누르기</strong><p>Ctrl + Shift + Space</p></div></li>
+        </ol>
       </section>
 
-      <section class="download-note"><div class="section-shell"><span>먼저 설치하세요</span><p>Windows 설치본은 완료 뒤 Here가 바로 실행됩니다. 대회용 unsigned 빌드는 SmartScreen 확인이 나타날 수 있습니다.</p><a href="https://github.com/stpcoder/here-context-recall/releases/tag/latest-build">모든 다운로드 보기 ↗</a></div></section>
-
-      <div class="manual-layout section-shell">
-        <aside class="manual-aside"><p>ON THIS PAGE</p><nav><a href="#start">01 처음 설정</a><a href="#recall">02 맥락 복원</a><a href="#remember">03 여기 기억</a><a href="#model">04 사내 AI</a><a href="#privacy">05 개인정보</a></nav><div><strong>단축키</strong><span>Windows <kbd>Ctrl ⇧ Space</kbd></span><span>macOS <kbd>⌘ ⇧ Space</kbd></span></div></aside>
-
-        <div class="manual-content">
-          <section class="guide-step" id="start">
-            <header class="step-header reveal"><span>01</span><div><p>FIRST RUN</p><h2>창 흐름을 켜세요.</h2><p>Here는 기본으로 아무것도 기록하지 않습니다. 설정에서 직접 허용해야 최근 창 전환이 시작됩니다.</p></div></header>
-            <figure class="manual-figure reveal" data-delay="1">
-              <div class="screenshot-frame portrait-frame">
-                <div class="window-bar"><i></i><i></i><i></i><span>Here Settings</span></div>
-                <img src="/images/here-settings.png" width="1200" height="1640" loading="lazy" decoding="async" alt="Here 설정 화면에서 창 흐름 허용을 켜는 위치" />
-                <span class="focus-ring" style="--x:4%;--y:13%;--w:92%;--h:21%"></span>
-                <span class="callout" style="--x:8%;--y:12%"><b>1</b> 이 스위치를 켜세요</span>
-                <span class="focus-ring save-ring" style="--x:71%;--y:91%;--w:24%;--h:6%"></span>
-                <span class="callout callout-bottom" style="--x:49%;--y:86%"><b>2</b> 마지막에 저장</span>
-              </div>
-              <figcaption><strong>창 흐름 허용</strong><span>최근 앱 이름·창 제목·전환 시각만 메모리에 보관합니다.</span></figcaption>
-            </figure>
-            <div class="tip-card reveal"><span>TIP</span><p><strong>업무 문서 화면까지 보고 싶다면?</strong> ‘복원 순간의 창 한 장 보기’를 별도로 켜세요. 직접 복원하거나 기억한 순간에만 한 장을 사용합니다.</p></div>
-          </section>
-
-          <section class="guide-step" id="recall">
-            <header class="step-header reveal"><span>02</span><div><p>CORE MOMENT</p><h2>“왜 여기지?”를 누르세요.</h2><p>다른 창을 오가다 현재 업무로 돌아왔을 때, 단축키 또는 화면 가장자리의 작은 Here 버튼을 누릅니다.</p></div></header>
-            <div class="shortcut-hero reveal"><div><small>어디서든</small><strong>Ctrl <i>+</i> Shift <i>+</i> Space</strong></div><span>또는</span><div class="bubble-demo"><img src="/here-mark.svg" alt="" /><strong>Why am I here?</strong></div></div>
-            <figure class="manual-figure reveal">
-              <div class="screenshot-frame landscape-frame">
-                <div class="window-bar"><i></i><i></i><i></i><span>Here — Why was I here?</span></div>
-                <img src="/images/here-recall.png" width="1640" height="1400" loading="lazy" decoding="async" alt="Here 복원 화면에서 업무 흐름과 다음 행동을 보는 위치" />
-                <span class="focus-ring" style="--x:4%;--y:39%;--w:53%;--h:41%"></span>
-                <span class="callout" style="--x:7%;--y:34%"><b>1</b> 원인 → 현재 흐름</span>
-                <span class="focus-ring" style="--x:4%;--y:84%;--w:43%;--h:8%"></span>
-                <span class="callout callout-bottom" style="--x:28%;--y:77%"><b>2</b> 지금 할 일 하나</span>
-              </div>
-              <figcaption><strong>근거 체인 읽기</strong><span>‘잠깐 끊김’과 ‘다시 돌아옴’이 표시된 순서만 확인하면 됩니다.</span></figcaption>
-            </figure>
-            <div class="when-grid reveal"><article><span>USE 01</span><h3>엑셀로 돌아왔는데<br />뭘 보려 했는지 잊었을 때</h3></article><article><span>USE 02</span><h3>메일 답장 뒤<br />원래 작업을 다시 찾을 때</h3></article><article><span>USE 03</span><h3>브라우저 탭을 돌다<br />출발점을 놓쳤을 때</h3></article></div>
-          </section>
-
-          <section class="guide-step" id="remember">
-            <header class="step-header reveal"><span>03</span><div><p>LONG GAP</p><h2>회의 전에는 ‘여기 기억’.</h2><p>몇 시간 뒤나 다음 날까지 이어야 한다면, 자동 기록 전체가 아니라 지금 지점만 골라 남기세요.</p></div></header>
-            <figure class="manual-figure reveal">
-              <div class="screenshot-frame landscape-frame">
-                <div class="window-bar"><i></i><i></i><i></i><span>Here — Checkpoint</span></div>
-                <img src="/images/here-recall.png" width="1640" height="1400" loading="lazy" decoding="async" alt="Here 복원 화면의 여기 기억 버튼" />
-                <span class="focus-ring" style="--x:50%;--y:84%;--w:30%;--h:8%"></span>
-                <span class="callout callout-bottom" style="--x:57%;--y:76%"><b>1</b> 여기 기억</span>
-              </div>
-              <figcaption><strong>체크포인트</strong><span>최대 12개·7일. OS 보호 저장소로 암호화하며 언제든 모두 지울 수 있습니다.</span></figcaption>
-            </figure>
-            <div class="key-note reveal"><span>키보드로 더 빠르게</span><strong>Windows <kbd>Ctrl ⇧ M</kbd></strong><strong>macOS <kbd>⌘ ⇧ M</kbd></strong></div>
-          </section>
-
-          <section class="guide-step" id="model">
-            <header class="step-header reveal"><span>04</span><div><p>WORK AI</p><h2>사내 업무 모델을 연결하세요.</h2><p>Vertex는 로컬 QA용입니다. 실제 업무 환경에서는 vLLM/OpenAI-compatible Base URL, Model ID, Bearer token을 사용합니다.</p></div></header>
-            <figure class="manual-figure reveal">
-              <div class="screenshot-frame portrait-frame">
-                <div class="window-bar"><i></i><i></i><i></i><span>Here — Work AI</span></div>
-                <img src="/images/here-settings.png" width="1200" height="1640" loading="lazy" decoding="async" alt="Here 설정에서 사내 vLLM Base URL, Model ID, Bearer token을 입력하는 화면" />
-                <span class="focus-ring" style="--x:4%;--y:37%;--w:92%;--h:42%"></span>
-                <span class="callout" style="--x:8%;--y:34%"><b>1</b> 세 값만 입력</span>
-                <span class="focus-ring" style="--x:5%;--y:79%;--w:40%;--h:6%"></span>
-                <span class="callout callout-bottom" style="--x:11%;--y:73%"><b>2</b> 실제 복원 형식 테스트</span>
-              </div>
-              <figcaption><strong>연결 성공의 기준</strong><span>선택한 Model ID가 근거 ID를 보존한 Here JSON 복원 결과까지 반환해야 합니다. 이미지 옵션이 켜져 있으면 VLM 입력도 함께 확인합니다.</span></figcaption>
-            </figure>
-            <div class="connection-fields reveal"><div><span>1</span><p><strong>Base URL</strong><code>https://llm.company.internal/v1</code></p></div><div><span>2</span><p><strong>Model ID</strong><code>Qwen/Qwen2.5-72B-Instruct</code></p></div><div><span>3</span><p><strong>Bearer token</strong><code>OS 보호 저장소에만 암호화</code></p></div></div>
-          </section>
-
-          <section class="guide-step" id="privacy">
-            <header class="step-header reveal"><span>05</span><div><p>YOUR CONTROL</p><h2>기록의 운전대는 사용자에게.</h2><p>일시 정지, 앱 제외, 보존 시간 변경, 전체 삭제를 설정 한곳에서 제어합니다.</p></div></header>
-            <figure class="manual-figure reveal">
-              <div class="screenshot-frame portrait-frame">
-                <div class="window-bar"><i></i><i></i><i></i><span>Here — Privacy</span></div>
-                <img src="/images/here-settings-privacy.png" width="1200" height="1640" loading="lazy" decoding="async" alt="Here 설정의 백그라운드 기록과 전체 삭제 화면" />
-                <span class="focus-ring" style="--x:4%;--y:71%;--w:92%;--h:25%"></span>
-                <span class="callout" style="--x:8%;--y:68%"><b>1</b> 보존·제외·삭제</span>
-              </div>
-              <figcaption><strong>민감한 업무 전</strong><span>버블에서 일시 정지하거나, 설정에서 앱 이름을 제외 목록에 추가하세요.</span></figcaption>
-            </figure>
-            <div class="never-collect reveal"><h3>Here가 자동으로 수집하지 않는 것</h3><div><span>키 입력</span><span>마우스 클릭</span><span>파일 본문</span><span>Excel 셀 값</span><span>브라우저 URL</span><span>클립보드</span></div></div>
-          </section>
+      <section class="download-bar">
+        <div class="section-shell">
+          <p><strong>Here 받기</strong><span>최신 성공 빌드로 자동 연결됩니다.</span></p>
+          <div>
+            <a class="download-primary" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows 설치본 <span>↓</span></a>
+            <a href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Portable.exe">Portable</a>
+            <a href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-macOS-arm64.dmg">macOS</a>
+          </div>
         </div>
+      </section>
+
+      <div class="guide section-shell">
+        <section class="guide-section guide-split" id="allow">
+          <div class="guide-copy reveal">
+            <span class="step-number">01</span>
+            <p class="section-kicker">처음 한 번만</p>
+            <h2>창 흐름을<br />허용하세요.</h2>
+            <p>Here는 기본으로 아무것도 기록하지 않습니다. <strong>창 흐름 허용</strong>을 켠 뒤부터 최근 앱 이름, 창 제목, 전환 시각만 메모리에 남깁니다.</p>
+            <ul class="plain-list">
+              <li>기본 보존 시간 10분</li>
+              <li>키 입력 · 클릭 · 문서 본문은 기록하지 않음</li>
+              <li>언제든 일시 정지하거나 모두 지우기</li>
+            </ul>
+          </div>
+
+          <figure class="manual-figure portrait reveal" data-delay="1">
+            <div class="screenshot-frame">
+              <div class="window-bar"><i></i><i></i><i></i><span>Here · Settings</span></div>
+              <img src="/images/here-settings.png" width="1200" height="1640" loading="lazy" decoding="async" alt="Here 설정에서 창 흐름 허용을 켜는 화면" />
+              <span class="focus-ring" style="--x:4%;--y:13%;--w:92%;--h:14%"></span>
+              <span class="callout" style="--x:8%;--y:12%"><b>1</b> 창 흐름 허용</span>
+            </div>
+            <figcaption>설정은 기기에 저장됩니다. 자동 타임라인은 앱을 종료하면 사라집니다.</figcaption>
+          </figure>
+        </section>
+
+        <section class="guide-section recall-section" id="recall">
+          <header class="center-copy reveal">
+            <span class="step-number">02</span>
+            <p class="section-kicker">필요한 순간에</p>
+            <h2>“왜 여기지?”</h2>
+            <p>현재 창에서 단축키를 누르면, 지금 일을 이어가는 데 필요한 네 가지만 보여줍니다.</p>
+          </header>
+
+          <div class="shortcut-card reveal" data-delay="1">
+            <div><span>Windows</span><strong>Ctrl <i>+</i> Shift <i>+</i> Space</strong></div>
+            <div><span>macOS</span><strong>⌘ <i>+</i> Shift <i>+</i> Space</strong></div>
+          </div>
+
+          <figure class="manual-figure landscape reveal">
+            <div class="screenshot-frame">
+              <div class="window-bar"><i></i><i></i><i></i><span>Here · 맥락 복원</span></div>
+              <img src="/images/here-recall.png" width="1640" height="1080" loading="lazy" decoding="async" alt="Here가 시작된 요청, 실제 이동, 다시 시작할 곳과 다음 행동을 보여주는 화면" />
+            </div>
+            <figcaption>관측된 창 전환만 근거로 사용하고, 모델이 만든 근거는 표시하지 않습니다.</figcaption>
+          </figure>
+
+          <ol class="result-grid reveal" aria-label="복원 결과 구성">
+            <li><span>01</span><strong>시작된 요청</strong><p>누가 무엇을 요청했는지</p></li>
+            <li><span>02</span><strong>실제 이동</strong><p>어떤 창을 거쳐 왔는지</p></li>
+            <li><span>03</span><strong>다시 시작할 곳</strong><p>현재 작업 대상을 어디서 찾을지</p></li>
+            <li><span>04</span><strong>다음 한 단계</strong><p>지금 바로 이어갈 행동</p></li>
+          </ol>
+        </section>
+
+        <section class="next-grid">
+          <article class="next-card reveal" id="remember">
+            <span class="step-number">03</span>
+            <p class="section-kicker">긴 중단 전</p>
+            <h2>여기 기억.</h2>
+            <p>회의 전이나 퇴근 전에 지금 지점만 남깁니다. 다음 날에도 같은 작업 대상과 다음 행동으로 돌아옵니다.</p>
+            <div class="key-row"><span>Windows</span><kbd>Ctrl ⇧ M</kbd></div>
+            <div class="key-row"><span>macOS</span><kbd>⌘ ⇧ M</kbd></div>
+            <small>최대 12개 · 7일 · OS 보호 저장소 암호화</small>
+          </article>
+
+          <article class="next-card model-card reveal" id="model" data-delay="1">
+            <span class="step-number">04</span>
+            <p class="section-kicker light">사내 AI 연결</p>
+            <h2>세 값이면<br />충분합니다.</h2>
+            <div class="model-fields">
+              <div><span>Base URL</span><code>https://llm.company.internal/v1</code></div>
+              <div><span>Model ID</span><code>Qwen/Qwen2.5-72B-Instruct</code></div>
+              <div><span>Bearer token</span><code>••••••••••••</code></div>
+            </div>
+            <p>연결 확인은 실제 <code>/chat/completions</code>와 Here 복원 형식까지 검증합니다. 실패해도 로컬 결과는 그대로 남습니다.</p>
+            <a href="https://github.com/stpcoder/here-context-recall/blob/main/VLLM.md">vLLM 상세 가이드 <span>↗</span></a>
+          </article>
+        </section>
       </div>
 
-      <section class="manual-final"><div class="section-shell reveal"><img src="/here-mark.svg" alt="" /><div><p>이제 평소처럼 일하면 됩니다.</p><h2>잊은 순간에,<br />Here를 누르세요.</h2></div><a class="button button-primary" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows용 Here 받기 <span>↓</span></a></div></section>
+      <section class="privacy-strip">
+        <div class="section-shell reveal">
+          <div><p class="section-kicker light">개인정보</p><h2>기록의 운전대는<br />사용자에게.</h2></div>
+          <dl>
+            <div><dt>자동 기록</dt><dd>앱 · 창 제목 · 시각</dd></div>
+            <div><dt>기록 안 함</dt><dd>키 입력 · 클릭 · 본문 · URL</dd></div>
+            <div><dt>바로 제어</dt><dd>일시 정지 · 앱 제외 · 전체 삭제</dd></div>
+          </dl>
+        </div>
+      </section>
+
+      <section class="manual-final section-shell reveal">
+        <img src="/here-mark.svg" alt="" />
+        <div><p>준비가 끝났습니다.</p><h2>잊은 순간에,<br />Here를 누르세요.</h2></div>
+        <a class="button button-primary" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows용 Here 받기 <span>↓</span></a>
+      </section>
     </main>
-    <footer class="site-footer section-shell"><a class="brand" href="../"><img src="/here-mark.svg" alt="" /><span>here<b>.</b></span></a><p>Product guide</p><div><a href="../">제품 소개</a><a href="https://github.com/stpcoder/here-context-recall/releases/tag/latest-build">다운로드</a><a href="https://github.com/stpcoder/here-context-recall">GitHub</a></div><small>© 2026 Here Hackathon Team</small></footer>
+
+    <footer class="site-footer section-shell">
+      <a class="brand" href="../"><img src="/here-mark.svg" alt="" /><span>here</span></a>
+      <p>빠른 시작</p>
+      <div><a href="../">제품 소개</a><a href="https://github.com/stpcoder/here-context-recall/releases/tag/latest-build">다운로드</a><a href="https://github.com/stpcoder/here-context-recall">GitHub</a></div>
+    </footer>
     <script type="module" src="../site.js"></script>
   </body>
 </html>
