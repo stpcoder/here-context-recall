@@ -182,7 +182,14 @@ export class ActivityMonitor {
 
   /** Forces one fresh foreground-window sample before a user-triggered recall. */
   async snapshot(): Promise<ActivityEvent | undefined> {
+    const observedBefore = this.samplesObserved;
+    const failuresBefore = this.readFailures;
     await this.poll();
+    if (this.samplesObserved === observedBefore) {
+      if (this.readFailures > failuresBefore)
+        this.recordGap("unavailable", Date.now());
+      return undefined;
+    }
     return this.current();
   }
 
