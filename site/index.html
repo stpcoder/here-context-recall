@@ -36,119 +36,79 @@
     <main id="main">
       <section class="hero section-shell">
         <div class="hero-copy reveal">
-          <p class="eyebrow"><span></span> CONTEXT RECOVERY FOR WORK</p>
-          <h1>왜 열었는지.<br />어디서 멈췄는지.<br /><em>다음은 무엇인지.</em></h1>
-          <p class="hero-lead">Here는 최근 창 전환을 연결해 시작된 요청과 작업 대상을 찾고, 지금 이어갈 한 단계만 남깁니다.</p>
+          <p class="section-kicker">업무 맥락 복원</p>
+          <h1>왜 열었는지,<br /><em>다음에 뭘 할지.</em></h1>
+          <p class="hero-lead">최근 창 전환을 연결해 시작된 요청과 다시 시작할 지점을 한 번에 복원합니다.</p>
           <div class="hero-actions">
-            <a class="button button-primary" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows용 Here 받기 <span>↓</span></a>
-            <a class="text-link" href="#handoff">복원 순간 보기 <span>→</span></a>
+            <a class="button button-primary" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows용 다운로드 <span>↓</span></a>
+            <a class="text-link" href="#handoff">복원 방식 보기 <span>→</span></a>
           </div>
-          <p class="hero-meta">Windows-first · macOS beta · 공개 해커톤 빌드</p>
         </div>
 
-        <div class="hero-demo reveal" data-delay="1" aria-label="Here가 업무 맥락을 복원하는 예시">
-          <div class="demo-windowbar"><span><i></i><i></i><i></i></span><b>result_0723.xlsx</b><small>14:36</small></div>
-          <div class="demo-question"><span>?</span><p>이 파일, 왜 열었지?</p><kbd>⌘ ⇧ Space</kbd></div>
-          <div class="demo-workspace">
-            <div class="demo-source">
-              <header><span>시작점</span><small>Slack · 14:31</small></header>
-              <strong>“A sample 결과 확인 가능?”</strong>
-              <p>김OO</p>
-            </div>
-            <div class="demo-path" aria-label="Slack에서 Excel까지 이동 경로">
-              <span>Slack</span><i>→</i><span>Finder</span><i>→</i><span>Excel</span>
-              <small>Outlook · 2분 멈춤</small>
-            </div>
-            <div class="demo-result">
-              <div><span></span><small>맥락 복원 완료</small></div>
-              <h2>김OO님의 A sample 질문에<br />답하던 중이었어요.</h2>
-              <dl><div><dt>다시 시작할 곳</dt><dd>Sample A · Condition B</dd></div><div><dt>다음 한 단계</dt><dd>Condition B 결과 확인</dd></div></dl>
-              <button type="button">이 지점에서 계속 <span>→</span></button>
-            </div>
+        <figure class="hero-product reveal" data-delay="1">
+          <div class="product-frame">
+            <div class="product-framebar"><i></i><i></i><i></i><span>Here · 맥락 복원</span></div>
+            <img src="/images/here-recall.png" width="1640" height="1080" fetchpriority="high" decoding="async" alt="시작된 요청, 실제 이동, 다시 시작할 곳과 다음 행동을 보여주는 Here 복원 화면" />
           </div>
-          <div class="demo-trigger"><img src="/here-mark.svg" alt="" /><span>Why am I here?</span></div>
-        </div>
-      </section>
-
-      <section class="proof-strip" aria-label="제품 원칙">
-        <div><strong>10분</strong><span>기본 로컬 흐름</span></div>
-        <div><strong>0</strong><span>키 입력·클릭 수집</span></div>
-        <div><strong>1회</strong><span>사용자 허용 화면</span></div>
-        <div><strong>/v1</strong><span>사내 모델 연결</span></div>
+          <figcaption><strong>“왜 여기지?”</strong> 한 번으로 업무 재개 지점까지.</figcaption>
+        </figure>
       </section>
 
       <section class="moment section-shell" id="moment">
         <header class="section-heading reveal">
-          <p class="eyebrow">THE INTERRUPTION GAP</p>
-          <h2>기억이 사라진 게 아니라,<br /><em>일의 연결이 끊겼습니다.</em></h2>
-          <p>메신저의 질문과 Excel 파일은 남아 있어도, 둘 사이의 이유는 창을 오가는 순간 사라집니다.</p>
+          <p class="section-kicker">문제 상황</p>
+          <h2>파일은 남지만,<br /><em>이유는 사라집니다.</em></h2>
+          <p>메신저의 질문과 Excel 파일 사이에 있던 맥락은 창을 오가는 순간 끊깁니다.</p>
         </header>
         <div class="interruption-board reveal" data-delay="1">
           <ol>
-            <li><time>14:31</time><span class="app-token">S</span><div><small>요청</small><strong>A sample 결과 확인 가능?</strong></div></li>
-            <li><time>14:32</time><span class="app-token">F</span><div><small>탐색</small><strong>평가 결과 폴더</strong></div></li>
-            <li><time>14:33</time><span class="app-token">X</span><div><small>작업</small><strong>result_0723.xlsx</strong></div></li>
-            <li class="is-interruption"><time>14:34</time><span class="app-token">O</span><div><small>방해</small><strong>분기 예산 승인 요청</strong></div></li>
-            <li class="is-return"><time>14:36</time><span class="app-token">X</span><div><small>복귀</small><strong>이 파일, 왜 열었지?</strong></div></li>
+            <li><time>14:31</time><div><strong>Slack 요청</strong><span>“A sample 결과 확인 가능?”</span></div></li>
+            <li><time>14:33</time><div><strong>Excel 열기</strong><span>result_0723.xlsx</span></div></li>
+            <li class="is-interruption"><time>14:34</time><div><strong>업무 중단</strong><span>Outlook 알림 응답</span></div></li>
+            <li class="is-return"><time>14:36</time><div><strong>Excel 복귀</strong><span>이 파일, 왜 열었지?</span></div></li>
           </ol>
-          <aside><span>사라진 것</span><strong>질문 → 파일의 이유</strong><p>Here는 창 제목보다 이 연결을 복원합니다.</p></aside>
+          <aside><span>Here가 돌려주는 답</span><strong>김OO님의 A sample 질문에 답하던 중이었어요.</strong></aside>
         </div>
       </section>
 
       <section class="handoff" id="handoff">
         <div class="section-shell handoff-grid">
           <div class="handoff-copy reveal">
-            <p class="eyebrow light">CONTEXT HANDOFF</p>
-            <h2>창을 보여주는 데서<br />끝나지 않습니다.</h2>
-            <p>복원 결과를 네 가지로 나눠, 읽는 순간 바로 업무로 돌아갈 수 있게 합니다.</p>
-            <ol>
-              <li><span>01</span><div><strong>시작된 요청</strong><small>누가 무엇을 물었는지</small></div></li>
-              <li><span>02</span><div><strong>실제 이동 경로</strong><small>어떤 창을 거쳤는지</small></div></li>
-              <li><span>03</span><div><strong>멈춘 작업 대상</strong><small>어디서 다시 시작할지</small></div></li>
-              <li><span>04</span><div><strong>다음 한 단계</strong><small>지금 무엇을 할지</small></div></li>
-            </ol>
+            <p class="section-kicker light">복원 방식</p>
+            <h2>네 가지면<br />충분합니다.</h2>
+            <p>창 목록 대신, 바로 업무를 이어갈 정보만 남깁니다.</p>
           </div>
-          <figure class="product-shot reveal" data-delay="1">
-            <div class="shot-bar"><i></i><i></i><i></i><span>Here · Context restored</span></div>
-            <img src="/images/here-recall.png" width="1640" height="1080" loading="lazy" decoding="async" alt="시작점, 실제 이동, 다시 시작할 곳과 다음 단계를 보여주는 Here 복원 화면" />
-            <figcaption><span></span> 실제 관측된 창 ID만 답의 근거로 사용</figcaption>
-          </figure>
-        </div>
-      </section>
-
-      <section class="capabilities section-shell">
-        <header class="section-heading compact reveal"><p class="eyebrow">ONE MOMENT, THREE LAYERS</p><h2>복원하고, 돌아가고,<br /><em>이어서 합니다.</em></h2></header>
-        <div class="capability-grid">
-          <article class="reveal"><span>01 / RECALL</span><h3>이유를 복원</h3><p>요청에서 현재 창까지의 인과 경로를 3–5개 근거로 압축합니다.</p><div class="mini-flow"><i>Slack</i><b>→</b><i>Excel</i></div></article>
-          <article class="reveal" data-delay="1"><span>02 / RETURN</span><h3>지점으로 복귀</h3><p>현재 파일과 멈춘 작업 대상을 나눠 보여주고 패널을 닫아 바로 이어갑니다.</p><div class="mini-target"><small>다시 시작할 곳</small><strong>Condition B</strong></div></article>
-          <article class="reveal" data-delay="2"><span>03 / REMEMBER</span><h3>나중을 위해 저장</h3><p>회의 전 한 지점만 골라 암호화해 다음 날의 시작점으로 남깁니다.</p><div class="mini-memory"><span>어젯밤 18:42</span><strong>Q3 예산 검토</strong></div></article>
+          <ol class="handoff-steps reveal" data-delay="1">
+            <li><span>01</span><div><strong>시작된 요청</strong><p>김OO · A sample 확인</p></div></li>
+            <li><span>02</span><div><strong>실제 이동</strong><p>Slack → Finder → Excel</p></div></li>
+            <li><span>03</span><div><strong>다시 시작할 곳</strong><p>Sample A · Condition B</p></div></li>
+            <li><span>04</span><div><strong>다음 한 단계</strong><p>Condition B 결과 확인</p></div></li>
+          </ol>
         </div>
       </section>
 
       <section class="work-ai section-shell" id="work-ai">
-        <div class="ai-copy reveal"><p class="eyebrow">WORK AI, YOUR ENDPOINT</p><h2>업무 데이터는<br />회사의 모델로.</h2><p>Base URL, Model ID, Bearer token만 넣으면 OpenAI-compatible vLLM이 같은 근거 계약으로 복원합니다.</p><a class="text-link" href="./manual/#model">연결 방법 보기 <span>→</span></a></div>
+        <div class="ai-copy reveal"><p class="section-kicker">사내 AI</p><h2>회사의 모델로<br />복원합니다.</h2><p>Base URL, Model ID, Bearer token만 넣으면 OpenAI-compatible vLLM으로 연결됩니다.</p><a class="text-link" href="./manual/#model">연결 방법 보기 <span>→</span></a></div>
         <div class="endpoint-flow reveal" data-delay="1">
-          <div><span>관측 근거</span><strong>5 window events</strong></div><i>→</i><div class="endpoint-core"><span>POST</span><strong>/v1/chat/completions</strong><small>Bearer token · optional VLM image</small></div><i>→</i><div><span>Here JSON</span><strong>source · target · next</strong></div>
-          <p><span></span>연결 실패 시에도 로컬 근거 체인은 유지됩니다.</p>
+          <div><span>관측 근거</span><strong>5개 창 이벤트</strong></div><i>→</i><div class="endpoint-core"><span>사내 endpoint</span><strong>/v1/chat/completions</strong></div><i>→</i><div><span>복원 결과</span><strong>요청 · 지점 · 다음 행동</strong></div>
+          <p>연결이 실패해도 로컬 근거는 남습니다.</p>
         </div>
       </section>
 
       <section class="privacy" id="privacy">
         <div class="section-shell privacy-inner reveal">
-          <div><p class="eyebrow light">USER CONTROL</p><h2>일은 기억하되,<br />내용은 들여다보지 않게.</h2></div>
+          <div><p class="section-kicker light">개인정보</p><h2>필요한 흐름만,<br />사용자가 허용할 때만.</h2></div>
           <dl><div><dt>자동 기록</dt><dd>앱 · 창 제목 · 시각</dd></div><div><dt>기록 안 함</dt><dd>키 입력 · 클릭 · 본문 · URL</dd></div><div><dt>사용자 제어</dt><dd>일시 정지 · 앱 제외 · 즉시 삭제</dd></div></dl>
         </div>
       </section>
 
       <section class="final-cta section-shell reveal">
-        <span class="final-mark"><img src="/here-mark.svg" alt="" /></span>
-        <p>다시 돌아온 순간을, 새로운 시작점으로.</p>
-        <h2>끊긴 일의<br /><em>다음 한 칸.</em></h2>
-        <div class="hero-actions centered-actions"><a class="button button-primary" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows용 Here 받기 <span>↓</span></a><a class="text-link" href="https://github.com/stpcoder/here-context-recall">GitHub에서 보기 <span>↗</span></a></div>
+        <h2>끊긴 일을<br /><em>바로 이어가세요.</em></h2>
+        <div class="hero-actions centered-actions"><a class="button button-primary" href="https://github.com/stpcoder/here-context-recall/releases/download/latest-build/Here-Windows-x64-Setup.exe">Windows용 다운로드 <span>↓</span></a><a class="text-link" href="https://github.com/stpcoder/here-context-recall">GitHub에서 보기 <span>↗</span></a></div>
       </section>
     </main>
 
-    <footer class="site-footer section-shell"><a class="brand" href="./"><img src="/here-mark.svg" alt="" /><span>here</span></a><p>Context recovery for interrupted work.</p><div><a href="./manual/">사용법</a><a href="https://github.com/stpcoder/here-context-recall/releases/tag/latest-build">다운로드</a><a href="https://github.com/stpcoder/here-context-recall">GitHub</a></div><small>© 2026 Here Hackathon Team</small></footer>
+    <footer class="site-footer section-shell"><a class="brand" href="./"><img src="/here-mark.svg" alt="" /><span>here</span></a><p>끊긴 업무의 맥락을 복원합니다.</p><div><a href="./manual/">사용법</a><a href="https://github.com/stpcoder/here-context-recall/releases/tag/latest-build">다운로드</a><a href="https://github.com/stpcoder/here-context-recall">GitHub</a></div></footer>
     <script type="module" src="./site.js"></script>
   </body>
 </html>
