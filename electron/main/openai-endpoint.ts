@@ -29,19 +29,19 @@ function parseEndpoint(value: string): URL {
   try {
     return new URL(value.trim());
   } catch {
-    throw new Error("Enter a valid API Base URL.");
+    throw new Error("올바른 API 주소를 입력해 주세요.");
   }
 }
 
 function validateParsedEndpoint(url: URL): void {
   if (url.username || url.password || url.search || url.hash)
     throw new Error(
-      "API Base URL must not contain credentials, a query, or a fragment.",
+      "API 주소에는 계정 정보, 쿼리 또는 # 문자를 넣을 수 없습니다.",
     );
   if (url.protocol === "https:") return;
   if (url.protocol !== "http:" || !isLocalOrPrivateHost(url.hostname)) {
     throw new Error(
-      "API Base URL must use HTTPS, except localhost or private-network HTTP.",
+      "API 주소는 HTTPS를 사용해야 합니다. localhost와 사내망 주소만 HTTP를 사용할 수 있습니다.",
     );
   }
 }

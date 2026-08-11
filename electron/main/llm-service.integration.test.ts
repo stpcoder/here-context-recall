@@ -187,7 +187,7 @@ describe("LlmService OpenAI-compatible wire integration", () => {
       visionRequested: true,
       visionVerified: false,
     });
-    expect(result.warning).toContain("text-only");
+    expect(result.warning).toContain("앱과 창 제목만");
     expect(contentKinds).toEqual(["vision", "text"]);
   });
 });
