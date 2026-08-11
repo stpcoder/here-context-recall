@@ -118,21 +118,51 @@ jobs:
       - name: Move rolling release tag
         shell: bash
         run: |
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/latest-build" >/dev/null 2>&1; then
-            gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/latest-build" -f sha="${GITHUB_SHA}" -F force=true
+          retry_gh() {
+            local attempt=1
+            local max_attempts=5
+            until "$@"; do
+              if (( attempt >= max_attempts )); then
+                echo "GitHub API call failed after ${max_attempts} attempts." >&2
+                return 1
+              fi
+              local delay=$((attempt * 5))
+              echo "GitHub API call failed; retrying in ${delay}s (${attempt}/${max_attempts})." >&2
+              sleep "${delay}"
+              attempt=$((attempt + 1))
+            done
+          }
+
+          if retry_gh gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/latest-build" >/dev/null; then
+            retry_gh gh api --method PATCH "repos/${GITHUB_REPOSITORY}/git/refs/tags/latest-build" -f sha="${GITHUB_SHA}" -F force=true
           else
-            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" -f ref='refs/tags/latest-build' -f sha="${GITHUB_SHA}"
+            retry_gh gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" -f ref='refs/tags/latest-build' -f sha="${GITHUB_SHA}"
           fi
 
       - name: Publish rolling GitHub Release
         shell: bash
         run: |
+          retry_gh() {
+            local attempt=1
+            local max_attempts=5
+            until "$@"; do
+              if (( attempt >= max_attempts )); then
+                echo "GitHub release command failed after ${max_attempts} attempts." >&2
+                return 1
+              fi
+              local delay=$((attempt * 5))
+              echo "GitHub release command failed; retrying in ${delay}s (${attempt}/${max_attempts})." >&2
+              sleep "${delay}"
+              attempt=$((attempt + 1))
+            done
+          }
+
           notes="Automated desktop build from main at ${GITHUB_SHA}. Download the installer for your operating system below."
-          if gh release view latest-build --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release edit latest-build --repo "${GITHUB_REPOSITORY}" --title 'Here — Latest automatic build' --notes "${notes}" --prerelease
-            gh release upload latest-build publish/* --repo "${GITHUB_REPOSITORY}" --clobber
+          if retry_gh gh release view latest-build --repo "${GITHUB_REPOSITORY}" >/dev/null; then
+            retry_gh gh release edit latest-build --repo "${GITHUB_REPOSITORY}" --title 'Here — Latest automatic build' --notes "${notes}" --prerelease
+            retry_gh gh release upload latest-build publish/* --repo "${GITHUB_REPOSITORY}" --clobber
           else
-            gh release create latest-build publish/* --repo "${GITHUB_REPOSITORY}" --title 'Here — Latest automatic build' --notes "${notes}" --prerelease --latest=false
+            retry_gh gh release create latest-build publish/* --repo "${GITHUB_REPOSITORY}" --title 'Here — Latest automatic build' --notes "${notes}" --prerelease --latest=false
           fi
 
       - name: Add download links to the run summary
@@ -191,13 +221,28 @@ jobs:
       - name: Publish GitHub Release for tag
         shell: bash
         run: |
+          retry_gh() {
+            local attempt=1
+            local max_attempts=5
+            until "$@"; do
+              if (( attempt >= max_attempts )); then
+                echo "GitHub release command failed after ${max_attempts} attempts." >&2
+                return 1
+              fi
+              local delay=$((attempt * 5))
+              echo "GitHub release command failed; retrying in ${delay}s (${attempt}/${max_attempts})." >&2
+              sleep "${delay}"
+              attempt=$((attempt + 1))
+            done
+          }
+
           title="Here ${GITHUB_REF_NAME}"
           notes="Automated desktop release from ${GITHUB_SHA}. Download an installer below and verify it with SHA256SUMS.txt."
-          if gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
-            gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --title "${title}" --notes "${notes}" --latest
-            gh release upload "${GITHUB_REF_NAME}" publish/* --repo "${GITHUB_REPOSITORY}" --clobber
+          if retry_gh gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null; then
+            retry_gh gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --title "${title}" --notes "${notes}" --latest
+            retry_gh gh release upload "${GITHUB_REF_NAME}" publish/* --repo "${GITHUB_REPOSITORY}" --clobber
           else
-            gh release create "${GITHUB_REF_NAME}" publish/* --repo "${GITHUB_REPOSITORY}" --title "${title}" --notes "${notes}" --verify-tag --latest
+            retry_gh gh release create "${GITHUB_REF_NAME}" publish/* --repo "${GITHUB_REPOSITORY}" --title "${title}" --notes "${notes}" --verify-tag --latest
           fi
 
       - name: Add version downloads to the run summary
