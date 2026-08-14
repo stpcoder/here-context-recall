@@ -9,7 +9,7 @@ body { color: #111318; background: #ffffff; font-family: "Pretendard Variable", 
 .og-brand img { width: 36px; height: 36px; border-radius: 10px; }
 .og-brand strong { font-size: 20px; letter-spacing: -.04em; }
 .og-copy { position: absolute; z-index: 2; top: 147px; left: 50px; width: 520px; }
-.og-copy p { margin: 0 0 18px; color: #6a6b70; font-size: 12px; font-weight: 760; letter-spacing: .12em; }
+.og-copy p { margin: 0; }
 .og-copy h1 { margin: 0; font-size: 55px; font-weight: 760; letter-spacing: -.06em; line-height: 1.02; }
 .og-copy h1 em { color: #f04e32; font-style: normal; }
 .og-copy > span { margin-top: 25px; display: block; color: #64666b; font-size: 16px; font-weight: 580; line-height: 1.55; }

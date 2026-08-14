@@ -34,12 +34,15 @@ import {
   buildContextJourney,
   type JourneyMoment,
 } from "./context-journey";
+import DemoWorkspace from "./DemoWorkspace";
 import { createShowcaseApi } from "./showcase-api";
 
-type Surface = "bubble" | "recall" | "settings";
+type Surface = "bubble" | "recall" | "settings" | "trace";
 
 const query = new URLSearchParams(window.location.search);
-const showcase = import.meta.env.DEV && query.get("showcase") === "1";
+const demo = import.meta.env.DEV && query.get("demo") === "1";
+const showcase =
+  import.meta.env.DEV && (query.get("showcase") === "1" || demo);
 if (showcase && query.get("captureScale")) {
   const scale = Math.max(1, Math.min(3, Number(query.get("captureScale")) || 1));
   const isBubbleCapture = query.get("surface") === "bubble";
@@ -59,7 +62,9 @@ const api = resolveApi();
 
 function getSurface(): Surface {
   const value = new URLSearchParams(window.location.search).get("surface");
-  return value === "bubble" || value === "settings" ? value : "recall";
+  return value === "bubble" || value === "settings" || value === "trace"
+    ? value
+    : "recall";
 }
 
 function clock(value?: number): string {
@@ -370,6 +375,104 @@ function RecallPanel() {
   );
 }
 
+function TraceLab() {
+  const [state, setState] = useState<RecallState>();
+
+  useEffect(() => {
+    void api.bootstrap().then(({ recall }) => setState(recall));
+    return api.onRecall(setState);
+  }, []);
+
+  const trace = state?.workTrace;
+  const steps = state?.explanation?.chain ?? [];
+  const byId = new Map(steps.map((step) => [step.eventId, step]));
+  const node = (eventId: string) => {
+    const step = byId.get(eventId);
+    const [app, ...detail] = (step?.label ?? eventId).split(" — ");
+    return { id: eventId, app, detail: detail.join(" — ") || eventId };
+  };
+  const work = trace?.workEvidenceIds.map(node) ?? [];
+  const detours = trace?.detourEvidenceIds.map(node) ?? [];
+  const proofLabel = (kind: NonNullable<RecallState["workTrace"]>["proof"][number]["kind"]) => ({
+    "same-artifact": "동일 자원 확인",
+    "exact-return": "같은 문서 복귀",
+    "new-window": "새 창 생성",
+    time: "전환 시각 확인",
+    "shared-anchor": "공통 단서 확인",
+  })[kind];
+
+  return (
+    <main className="trace-lab-shell">
+      <header className="trace-lab-topbar">
+        <div className="wordmark"><Mark compact /><span>here</span></div>
+        <span>Work Trace Lab</span>
+      </header>
+      {!trace ? (
+        <section className="trace-lab-empty">
+          <LoaderCircle className="spinner" size={20} />
+          <p>추적 결과를 준비하고 있습니다.</p>
+        </section>
+      ) : (
+        <section className="trace-lab-content">
+          <header className="trace-lab-heading">
+            <div>
+              <span className="trace-id">{trace.traceId}</span>
+              <span className={`trace-confidence is-${trace.confidence}`}>{trace.confidence}</span>
+            </div>
+            <h1>현재 Excel에 영향을 준 기록 {work.length}개를 찾았습니다.</h1>
+            <p>현재 창에서 원인을 거슬러 올라가 관련 기록만 선택했습니다.</p>
+          </header>
+
+          <div className="trace-lab-grid">
+            <section className="trace-graph" aria-label="현재 업무의 원인 추적 결과">
+              <div className="trace-graph-caption">
+                <b>역방향 원인 추적</b>
+                <span>{trace.excludedEventCount}개 창 제외</span>
+              </div>
+              <ol className="trace-main-path">
+                {work.map((item, index) => (
+                  <li key={item.id} className={item.id === trace.currentEvidenceId ? "is-current" : ""}>
+                    <span className="trace-node-index">{index + 1}</span>
+                    <div><b>{item.app}</b><p>{item.detail}</p></div>
+                    {index < work.length - 1 && <ArrowRight size={17} aria-hidden="true" />}
+                  </li>
+                ))}
+              </ol>
+              {detours.length > 0 && (
+                <div className="trace-detours">
+                  <span>중간에 확인한 창</span>
+                  {detours.map((item) => (
+                    <div key={item.id}><WindowIcon app={item.app} /><b>{item.app}</b><p>{item.detail}</p></div>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <aside className="trace-proof" aria-label="업무 연결 근거">
+              <h2>연결을 확정한 근거</h2>
+              <ul>
+                {trace.proof
+                  .filter(({ strength }) => strength === "exact" || strength === "strong")
+                  .map((item, index) => (
+                    <li key={`${item.kind}-${index}`}>
+                      <Check size={16} aria-hidden="true" />
+                      <div><b>{proofLabel(item.kind)}</b><p>{item.detail}</p></div>
+                    </li>
+                  ))}
+              </ul>
+              <div className="trace-model-input">
+                <span>사내 AI에 전달</span>
+                <strong>{[...trace.workEvidenceIds, ...trace.detourEvidenceIds].length}개 근거 ID</strong>
+                <code>{[...trace.workEvidenceIds, ...trace.detourEvidenceIds].join(" · ")}</code>
+              </div>
+            </aside>
+          </div>
+        </section>
+      )}
+    </main>
+  );
+}
+
 function Toggle({ checked, onChange, label, detail }: { checked: boolean; onChange: (value: boolean) => void; label: string; detail?: string }) {
   return (
     <label className="toggle-row">
@@ -606,7 +709,9 @@ function SettingsPanel() {
 
 export default function App() {
   const surface = useMemo(getSurface, []);
+  if (demo) return <DemoWorkspace />;
   if (surface === "bubble") return <Bubble />;
   if (surface === "settings") return <SettingsPanel />;
+  if (surface === "trace") return <TraceLab />;
   return <RecallPanel />;
 }

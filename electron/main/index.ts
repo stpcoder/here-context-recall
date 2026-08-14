@@ -34,6 +34,10 @@ import {
 } from "./llm-service";
 import { SettingsStore, settingsPatchSchema } from "./settings-store";
 import {
+  canUseWorkTraceForModel,
+  traceCurrentWork,
+} from "./work-trace-engine";
+import {
   ACTIVITY_IPC,
   DESKTOP_IPC,
   type ActivityEvent,
@@ -626,6 +630,9 @@ async function recall(trigger: RecallTrigger = "panel"): Promise<RecallState> {
   const explanation =
     (useCheckpoint ? checkpoint?.explanation : undefined) ??
     explainCausalChain({ current, events });
+  const workTrace = useCheckpoint
+    ? undefined
+    : traceCurrentWork({ current, events }).slice;
   const image = useCheckpoint
     ? checkpoint?.image
     : await captureWindowImage(current, settings);
@@ -641,6 +648,22 @@ async function recall(trigger: RecallTrigger = "panel"): Promise<RecallState> {
     current,
     explanation,
     reconstruction: fallback,
+    workTrace: workTrace
+      ? {
+          traceId: workTrace.traceId,
+          currentEvidenceId: workTrace.currentEvidenceId,
+          rootEvidenceId: workTrace.rootEvidenceId,
+          workEvidenceIds: workTrace.workEvidenceIds,
+          detourEvidenceIds: workTrace.detourEvidenceIds,
+          excludedEventCount: workTrace.excludedEventCount,
+          confidence: workTrace.confidence,
+          proof: workTrace.proof.map(({ kind, strength, detail }) => ({
+            kind,
+            strength,
+            detail,
+          })),
+        }
+      : undefined,
     checkpoint,
     mode: useCheckpoint ? "checkpoint" : "recent",
     contextImage: image,
@@ -653,10 +676,19 @@ async function recall(trigger: RecallTrigger = "panel"): Promise<RecallState> {
   window.focus();
 
   const immediate = recallState;
-  const evidenceIds = new Set([
-    ...explanation.evidenceIds,
-    ...(current ? [current.id] : []),
-  ]);
+  const filteredByTrace = canUseWorkTraceForModel(workTrace);
+  const evidenceIds = new Set(
+    filteredByTrace
+      ? [
+          ...workTrace!.workEvidenceIds,
+          ...workTrace!.detourEvidenceIds,
+          ...(current ? [current.id] : []),
+        ]
+      : [
+          ...explanation.evidenceIds,
+          ...(current ? [current.id] : []),
+        ],
+  );
   const evidence = evidenceFromEvents(
     events.filter((event) => evidenceIds.has(event.id)),
   );
