@@ -196,6 +196,29 @@ export function createShowcaseApi(): HereDesktopApi {
           nextAction: "비용 증감 열의 합계 확인",
           source: "model",
         },
+    workTrace: useSavedContext
+      ? undefined
+      : {
+          traceId: "T-204",
+          currentEvidenceId: "return",
+          rootEvidenceId: "msg",
+          workEvidenceIds: ["msg", "sheet", "return"],
+          detourEvidenceIds: ["mail"],
+          excludedEventCount: 17,
+          confidence: "exact",
+          proof: [
+            {
+              kind: "same-artifact",
+              strength: "exact",
+              detail: "Teams 첨부파일과 Excel 통합 문서의 자원 ID 일치",
+            },
+            {
+              kind: "exact-return",
+              strength: "exact",
+              detail: "같은 Excel 문서로 복귀",
+            },
+          ],
+        },
     checkpoint,
     mode: useSavedContext ? "checkpoint" : "recent",
     contextImage: includeWindowImage ? createShowcaseWindowImage() : undefined,

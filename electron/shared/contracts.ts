@@ -219,12 +219,29 @@ export interface ModelReconstruction {
   source: "model" | "fallback";
 }
 
+export interface WorkTraceDiagnostics {
+  traceId: string;
+  currentEvidenceId: string;
+  rootEvidenceId: string;
+  workEvidenceIds: string[];
+  detourEvidenceIds: string[];
+  excludedEventCount: number;
+  confidence: "exact" | "supported" | "uncertain";
+  proof: Array<{
+    kind: "same-artifact" | "exact-return" | "new-window" | "time" | "shared-anchor";
+    strength: "exact" | "strong" | "supporting";
+    detail?: string;
+  }>;
+}
+
 export interface RecallState {
   status: "idle" | "loading" | "ready" | "error";
   trigger?: RecallTrigger;
   current?: ActivityEvent;
   explanation?: CausalExplanation;
   reconstruction?: ModelReconstruction;
+  /** Optional, title-free proof summary for the hackathon diagnostic view. */
+  workTrace?: WorkTraceDiagnostics;
   checkpoint?: ContextCheckpoint;
   mode?: "recent" | "checkpoint";
   contextImage?: CheckpointImage;

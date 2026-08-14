@@ -1,0 +1,24 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1440
+PlayResY: 900
+ScaledBorderAndShadow: yes
+WrapStyle: 2
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Pretendard,31,&H00FFFFFF,&H000000FF,&H0015171B,&HC815171B,-1,0,0,0,100,100,-0.3,0,3,1,0,2,100,100,62,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:08.45,0:00:13.25,Default,,0,0,0,,재무팀에서 6월 마감을 위한 실제 인건비 확인 요청이 도착합니다
+Dialogue: 0,0:00:13.55,0:00:22.00,Default,,0,0,0,,요청을 확인하고 답장을 보냅니다
+Dialogue: 0,0:00:22.20,0:00:30.30,Default,,0,0,0,,실제 인건비를 확인하기 위해 전달받은 Excel 파일을 엽니다
+Dialogue: 0,0:00:30.50,0:00:36.50,Default,,0,0,0,,그러던 중 회의 알림이 도착해 Outlook을 열어봅니다
+Dialogue: 0,0:00:36.80,0:00:45.00,Default,,0,0,0,,Outlook에서 회의 일정을 확인한 뒤, 다시 Excel로 돌아옵니다
+Dialogue: 0,0:00:45.25,0:00:48.55,Default,,0,0,0,,그 잠깐 사이, 이 파일을 왜 열었는지 잊어버립니다
+Dialogue: 0,0:00:48.70,0:00:52.00,Default,,0,0,0,,어디서 받은 파일인지조차 바로 떠오르지 않습니다
+Dialogue: 0,0:00:52.20,0:00:54.45,Default,,0,0,0,,그때, 오른쪽 아래의 Here를 엽니다
+Dialogue: 0,0:00:54.55,0:00:56.60,Default,,0,0,0,,주요 행동을 살펴온 Here가 업무 맥락을 찾아줍니다
+Dialogue: 0,0:00:57.10,0:01:03.00,Default,,0,0,0,,Here가 최근 사용한 창을 살펴 이 파일을 열게 된 업무 맥락을 보여줍니다
+Dialogue: 0,0:01:03.25,0:01:09.30,Default,,0,0,0,,Here를 통해 확인하던 셀로 바로 돌아갑니다

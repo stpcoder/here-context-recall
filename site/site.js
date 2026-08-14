@@ -17,27 +17,57 @@ document.querySelectorAll(".site-header nav a").forEach((link) => {
   });
 });
 
-const observer = new IntersectionObserver(
-  (entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("is-visible");
-        observer.unobserve(entry.target);
-      }
-    });
-  },
-  { threshold: 0.12, rootMargin: "0px 0px -6%" },
-);
-document.querySelectorAll(".reveal").forEach((element) => observer.observe(element));
+const demoVideo = document.querySelector("[data-demo-video]");
+const videoToggle = document.querySelector("[data-video-toggle]");
+const videoLabel = document.querySelector("[data-video-label]");
+const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+let pausedByUser = reducedMotion.matches;
 
-const contextDemo = document.querySelector("[data-context-demo]");
-const replayButtons = document.querySelectorAll("[data-replay]");
-
-const replayDemo = () => {
-  if (!contextDemo) return;
-  contextDemo.classList.remove("is-playing");
-  void contextDemo.offsetWidth;
-  contextDemo.classList.add("is-playing");
+const syncVideoControl = () => {
+  if (!(demoVideo instanceof HTMLVideoElement) || !(videoToggle instanceof HTMLButtonElement)) return;
+  const paused = demoVideo.paused;
+  videoToggle.classList.toggle("is-paused", paused);
+  videoToggle.setAttribute("aria-label", paused ? "데모 영상 재생" : "데모 영상 일시 정지");
+  if (videoLabel) videoLabel.textContent = paused ? "재생" : "일시 정지";
 };
 
-replayButtons.forEach((button) => button.addEventListener("click", replayDemo));
+const playDemo = async () => {
+  if (!(demoVideo instanceof HTMLVideoElement) || pausedByUser || document.hidden) return;
+  try {
+    await demoVideo.play();
+  } catch {
+    syncVideoControl();
+  }
+};
+
+if (demoVideo instanceof HTMLVideoElement && videoToggle instanceof HTMLButtonElement) {
+  demoVideo.addEventListener("play", syncVideoControl);
+  demoVideo.addEventListener("pause", syncVideoControl);
+  videoToggle.addEventListener("click", () => {
+    if (demoVideo.paused) {
+      pausedByUser = false;
+      void playDemo();
+    } else {
+      pausedByUser = true;
+      demoVideo.pause();
+    }
+  });
+
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) void playDemo();
+      else demoVideo.pause();
+    },
+    { threshold: 0.35 },
+  );
+  observer.observe(demoVideo);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) demoVideo.pause();
+    else void playDemo();
+  });
+
+  if (reducedMotion.matches) demoVideo.pause();
+  else void playDemo();
+  syncVideoControl();
+}
