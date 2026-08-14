@@ -36,7 +36,7 @@ Playwright clicks through this complete React interaction:
 3. The user opens the attached workbook and is interrupted by an Outlook meeting alert.
 4. The user returns to Excel and clicks `왜 이 창을 열었지?`.
 5. Here briefly shows `하던 일을 찾고 있습니다` before revealing the observed Teams → Excel → Outlook → Excel sequence.
-6. The user returns to cell D6, confirms value 126, and reaches the final Here title card.
+6. The user returns to the review location in Excel and reaches the final Here title card.
 
 Run `npm run dev:renderer -- --port 4173 --strictPort`, then run
 `npm run demo:capture` to execute both the fast assertion flow and the paced

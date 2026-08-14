@@ -7,7 +7,7 @@
 <h1 align="center">Here</h1>
 
 <p align="center">
-  <strong>창으로 돌아오면, 이전의 내가 인수인계를 시작합니다.</strong><br />
+  <strong>정신없는 업무 속, 내 생각을 찾아주는 마법 같은 솔루션.</strong><br />
   왜 이 파일을 열었는지, 어디까지 확인했는지, 다음에 무엇을 해야 하는지 알려드립니다.
 </p>
 
@@ -34,15 +34,15 @@
 
 ## 잠시 전의 내가 남기는 업무 인수인계
 
-재무팀에서 6월 마감 전 실제 인건비를 확인해 달라는 메시지가 왔습니다. Excel 파일을 열어 값을 찾던 중 Outlook 회의 알림을 확인했고, 잠시 뒤 같은 파일로 돌아왔습니다. 파일은 그대로 열려 있지만 누구의 요청이었는지, 어디까지 봤는지, 다음에 무엇을 해야 하는지가 바로 떠오르지 않습니다.
+재무팀에서 6월 마감 전 실질 인건비를 검토해 달라는 메시지가 왔습니다. Excel 파일을 열어 자료를 살펴보던 중 Outlook 회의 알림을 확인했고, 잠시 뒤 같은 파일로 돌아왔습니다. 파일은 그대로 열려 있지만 누구의 요청이었는지, 어디까지 봤는지, 다음에 무엇을 해야 하는지가 바로 떠오르지 않습니다.
 
 Here 버튼을 누르면 다음과 같이 알려드립니다.
 
-> **인건비 실제값 126을 확인하려고 이 파일을 열었어요.**<br />
+> **6월 실질 인건비를 검토하려고 이 파일을 열었어요.**<br />
 > 민지님의 Teams 요청에서 시작됐습니다.<br />
-> 다음 할 일은 6월 인건비 시트 D6의 실제값 확인입니다.
+> 다음 할 일은 6월 인건비 마감 자료 검토입니다.
 
-사람과 사람 사이의 인수인계에는 일을 시작한 이유와 진행 상황, 다음 할 일이 담깁니다. Here는 같은 내용을 잠시 뒤의 나에게 전달합니다.
+회사에서는 인수인계할 때 업무를 하는 이유와 진행 상황을 설명하곤 합니다. Here는 말하지 않더라도 잠시 뒤의 나에게 정보를 전달합니다.
 
 ## 현재 창에서 원인을 거꾸로 찾습니다
 
@@ -62,7 +62,7 @@ Here는 최근 창을 통째로 AI에 보내지 않습니다. 각 창을 사용�
 현재 앱은 실제 활성 창 수집과 `같은 창 → 다른 창 → 같은 창` 복귀 탐지, Work Trace 그래프와 역방향 선택 엔진까지 구현했습니다. Teams 첨부파일 실행과 Excel 내부 위치를 정확히 연결하는 Windows UI Automation·Office 어댑터는 다음 네이티브 구현 단계입니다. 상세 설계와 테스트 기준은 [Work Trace Engine](WORK_TRACE_ENGINE.md)에서 확인할 수 있습니다.
 
 <p align="center">
-  <img src="site/public/images/demo-teams-request.png" width="1040" alt="Teams에서 6월 실제 인건비 확인 요청을 받은 화면" />
+  <img src="site/public/images/demo-teams-request.png" width="1040" alt="Teams에서 6월 실질 인건비 검토 요청을 받은 화면" />
 </p>
 
 재무팀의 요청으로 업무를 시작합니다.
@@ -74,7 +74,7 @@ Here는 최근 창을 통째로 AI에 보내지 않습니다. 각 창을 사용�
 회의 알림을 확인하며 하던 일이 잠시 멈춥니다. Excel로 돌아와 Here를 누르면 위의 인수인계가 나타납니다.
 
 <p align="center">
-  <img src="site/public/images/demo-work-resumed.png" width="1040" alt="Here 안내를 따라 Excel 실제값 126으로 돌아온 화면" />
+  <img src="site/public/images/demo-work-resumed.png" width="1040" alt="Here 안내를 따라 Excel의 실질 인건비 검토 위치로 돌아온 화면" />
 </p>
 
 Here의 안내를 따라 확인하던 값으로 돌아갑니다. 전체 과정은 [78초 데모 영상](https://stpcoder.github.io/here-context-recall/#demo)에서 볼 수 있습니다.
@@ -160,4 +160,4 @@ Electron 화면에는 Node 권한이 없습니다. AI 요청, 접근 토큰 복�
 
 ---
 
-<p align="center"><strong>잊어도, 일은 끊기지 않게.</strong></p>
+<p align="center"><strong>놓친 생각이, 다시 제자리로.</strong></p>
