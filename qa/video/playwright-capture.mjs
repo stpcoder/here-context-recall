@@ -112,9 +112,9 @@ async function verifyScenario(browser) {
 
   await page.getByRole("button", { name: "Teams 알림 열기" }).click();
   await page.getByLabel("Microsoft Teams 재무팀 대화").waitFor();
-  await page.getByRole("textbox", { name: "답장 입력" }).fill("네, 실제 인건비 확인해서 공유드릴게요.");
+  await page.getByRole("textbox", { name: "답장 입력" }).fill("네, 6월 실질 인건비 검토해서 공유드릴게요.");
   await page.getByRole("button", { name: "답장 보내기" }).click();
-  await page.getByText("네, 실제 인건비 확인해서 공유드릴게요.").waitFor();
+  await page.getByText("네, 6월 실질 인건비 검토해서 공유드릴게요.").waitFor();
   await page.screenshot({ path: "qa/screenshots/demo-02-teams.png" });
 
   await page.getByRole("button", { name: "6월 인건비 마감 Excel 파일 열기" }).click();
@@ -133,10 +133,10 @@ async function verifyScenario(browser) {
   await page.getByRole("dialog", { name: "Here가 하던 일을 찾고 있습니다" }).waitFor();
   await page.screenshot({ path: "qa/screenshots/demo-04-loading.png" });
   await page.getByRole("dialog", { name: "Here 업무 인수인계" }).waitFor();
-  await page.getByText("인건비 실제값 126을 확인하려고 이 파일을 열었어요.").waitFor();
+  await page.getByText("6월 실질 인건비를 검토하려고 이 파일을 열었어요.").waitFor();
   await page.screenshot({ path: "qa/screenshots/demo-04-here.png" });
 
-  await page.getByRole("button", { name: "인건비 실제값으로 이동" }).click();
+  await page.getByRole("button", { name: "검토하던 곳으로 이동" }).click();
   await page.getByRole("status").waitFor();
   await page.locator('[data-cell="D6"].is-selected').waitFor();
   await page.screenshot({ path: "qa/screenshots/demo-05-success.png" });
@@ -179,10 +179,10 @@ async function recordScenario(browser) {
   await pause(page, 3_000);
   const replyInput = page.getByRole("textbox", { name: "답장 입력" });
   await clickWithCursor(page, replyInput, { moveDuration: 850, holdAfter: 350 });
-  await page.keyboard.type("네, 실제 인건비 확인해서 공유드릴게요.", { delay: 55 });
+  await page.keyboard.type("네, 6월 실질 인건비 검토해서 공유드릴게요.", { delay: 55 });
   await pause(page, 650);
   await clickWithCursor(page, page.getByRole("button", { name: "답장 보내기" }), { moveDuration: 420, holdAfter: 650 });
-  await page.getByText("네, 실제 인건비 확인해서 공유드릴게요.").waitFor();
+  await page.getByText("네, 6월 실질 인건비 검토해서 공유드릴게요.").waitFor();
   mark("reply sent");
   await pause(page, 2_000);
   const workbook = page.getByRole("button", { name: "6월 인건비 마감 Excel 파일 열기" });
@@ -229,7 +229,7 @@ async function recordScenario(browser) {
   await page.screenshot({ path: "qa/screenshots/demo-04-here.png" });
   await page.mouse.move(1300, 780, { steps: 2 });
   await pause(page, 7_500);
-  const continueButton = page.getByRole("button", { name: "인건비 실제값으로 이동" });
+  const continueButton = page.getByRole("button", { name: "검토하던 곳으로 이동" });
   await clickWithCursor(page, continueButton, { moveDuration: 1_000, holdAfter: 850 });
 
   await page.getByRole("status").waitFor();

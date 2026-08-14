@@ -20,8 +20,8 @@
 
   <g font-family="Pretendard, Apple SD Gothic Neo, sans-serif">
     <text x="60" y="177" fill="#6A6B70" font-size="13" font-weight="720" letter-spacing="1.5">하던 일 찾기</text>
-    <text x="60" y="237" fill="#111214" font-size="51" font-weight="760" letter-spacing="-3.1">다시 돌아온 창에서,</text>
-    <text x="60" y="297" fill="#F04E32" font-size="51" font-weight="760" letter-spacing="-3.1">이유도 함께.</text>
+    <text x="60" y="237" fill="#111214" font-size="51" font-weight="760" letter-spacing="-3.1">정신없는 업무 속,</text>
+    <text x="60" y="297" fill="#F04E32" font-size="43" font-weight="760" letter-spacing="-2.7">내 생각을 찾아주는 Here.</text>
     <text x="60" y="355" fill="#64666B" font-size="17" font-weight="560" letter-spacing="-0.5">잠깐 다른 일을 보고 돌아온 순간,</text>
     <text x="60" y="382" fill="#64666B" font-size="17" font-weight="560" letter-spacing="-0.5">왜 열었는지와 지금 할 일을 알려줍니다.</text>
 
@@ -81,10 +81,10 @@
         <path d="M7.5 12H16.5" stroke="#F04E32" stroke-width="2.6" stroke-linecap="round"/>
       </g>
       <text x="49" y="33" fill="#111214" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="11" font-weight="760">here</text>
-      <text x="16" y="67" fill="#111214" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="18" font-weight="750" letter-spacing="-0.8">비용 증감을 확인하던 중이었어요.</text>
+      <text x="16" y="67" fill="#111214" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="18" font-weight="750" letter-spacing="-0.8">6월 실질 인건비를 검토하던 중이었어요.</text>
       <text x="16" y="90" fill="#797A7F" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="9.5" font-weight="600">Teams 요청  →  Excel  →  Outlook  →  지금</text>
       <rect x="16" y="103" width="448" height="25" rx="7" fill="#111214"/>
-      <text x="29" y="120" fill="#FFFFFF" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="9" font-weight="670">합계 셀로 돌아가기</text>
+      <text x="29" y="120" fill="#FFFFFF" font-family="Pretendard, Apple SD Gothic Neo, sans-serif" font-size="9" font-weight="670">검토하던 곳으로 돌아가기</text>
       <path d="M439 115H452M448 111L452 115L448 119" stroke="#C8C9CD" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
     </g>
 

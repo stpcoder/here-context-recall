@@ -223,7 +223,7 @@ function TeamsScreen({
           <label className="demo-chat-filter"><Search size={14} /><span>최근 채팅 검색</span></label>
           <button className="demo-chat-person is-active">
             <span className="demo-avatar purple">MJ</span>
-            <span><b>민지 · 재무팀</b><small>6월 실제 인건비 확인 부탁드려요.</small></span>
+            <span><b>민지 · 재무팀</b><small>6월 실질 인건비 검토 부탁드려요.</small></span>
             <time>14:31</time>
           </button>
           <button className="demo-chat-person">
@@ -251,7 +251,7 @@ function TeamsScreen({
               <span className="demo-avatar purple">MJ</span>
               <div>
                 <header><b>민지</b><time>14:31</time></header>
-                <p>태호님, 6월 마감 전에 실제 인건비가 <strong>126</strong>으로 반영됐는지 확인 부탁드려요.</p>
+                <p>태호님, 6월 마감 전에 <strong>실질 인건비</strong> 검토 부탁드려요.</p>
                 <button className="demo-file-card" onClick={onOpenWorkbook} aria-label="6월 인건비 마감 Excel 파일 열기">
                   <OfficeIcon app="excel" size={38} />
                   <span><b>6월_인건비마감.xlsx</b><small>Excel 통합 문서 · 24KB</small></span>
@@ -263,7 +263,7 @@ function TeamsScreen({
               <article className="demo-message outgoing">
                 <div>
                   <header><b>태호</b><time>14:32</time></header>
-                  <p>네, 실제 인건비 확인해서 공유드릴게요.</p>
+                  <p>네, 6월 실질 인건비 검토해서 공유드릴게요.</p>
                 </div>
                 <span className="demo-avatar dark">TH</span>
               </article>
@@ -428,7 +428,7 @@ function TaskSwitcher({ selected }: { selected: number }) {
 
 function HerePanel({ onClose, onContinue }: { onClose: () => void; onContinue: () => void }) {
   const moments = [
-    { time: "14:31", app: "teams" as const, title: "6월 실제 인건비 126 확인 요청" },
+    { time: "14:31", app: "teams" as const, title: "6월 실질 인건비 검토 요청" },
     { time: "14:32", app: "excel" as const, title: "6월_인건비마감.xlsx 열기" },
     { time: "14:34", app: "outlook" as const, title: "회의 알림을 확인하며 잠시 이탈" },
     { time: "14:36", app: "excel" as const, title: "6월 인건비 마감으로 복귀" },
@@ -444,7 +444,7 @@ function HerePanel({ onClose, onContinue }: { onClose: () => void; onContinue: (
           <OfficeIcon app="excel" size={34} />
           <span><b>6월_인건비마감.xlsx</b><small>방금 다시 열었습니다</small></span>
         </div>
-        <h2>인건비 실제값 126을 확인하려고 이 파일을 열었어요.</h2>
+        <h2>6월 실질 인건비를 검토하려고 이 파일을 열었어요.</h2>
         <p className="demo-here-origin">민지님의 Teams 요청에서 시작됐습니다.</p>
         <ol className="demo-context-chain">
           {moments.map((moment, index) => (
@@ -458,10 +458,10 @@ function HerePanel({ onClose, onContinue }: { onClose: () => void; onContinue: (
         <div className="demo-target">
           <span>확인할 위치</span>
           <b>6월 인건비 · D6</b>
-          <p>인건비 행의 실제값</p>
+          <p>실질 인건비 검토 위치</p>
         </div>
-        <button className="demo-continue-button" onClick={onContinue} aria-label="인건비 실제값으로 이동">
-          인건비 실제값으로 이동
+        <button className="demo-continue-button" onClick={onContinue} aria-label="검토하던 곳으로 이동">
+          검토하던 곳으로 이동
         </button>
       </aside>
     </div>
@@ -623,7 +623,7 @@ export default function DemoWorkspace() {
         <Notification
           app="teams"
           title="민지 · 재무팀"
-          body="6월 마감 전 실제 인건비 확인 부탁드려요."
+          body="6월 마감 전 실질 인건비 검토 부탁드려요."
           onClick={openTeams}
         />
       )}
@@ -650,7 +650,7 @@ export default function DemoWorkspace() {
       {selected && (
         <div className="demo-success" role="status">
           <Check size={18} />
-          <span><b>인건비 실제값 126</b>을 찾았습니다.</span>
+          <span><b>실질 인건비 검토 위치</b>로 돌아왔어요.</span>
         </div>
       )}
 
